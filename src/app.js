@@ -24,6 +24,10 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "PrepTrack AI Backend" });
 });
 
+app.get("/", (_req, res) => {
+  res.send("API is running 🚀");
+});
+
 app.use("/api", routes);
 
 const frontendDistCandidates = [
@@ -42,8 +46,12 @@ if (shouldServeFrontend) {
   console.log(`Serving frontend from: ${frontendDistPath}`);
   app.use(express.static(frontendDistPath));
 
-  app.get(/^\/(?!api).*/, (_req, res) => {
-    res.sendFile(path.join(frontendDistPath, "index.html"));
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+
+    return res.sendFile(path.join(frontendDistPath, "index.html"));
   });
 }
 
