@@ -24,10 +24,6 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "PrepTrack AI Backend" });
 });
 
-app.get("/", (_req, res) => {
-  res.send("API is running 🚀");
-});
-
 app.use("/api", routes);
 
 const frontendDistCandidates = [
