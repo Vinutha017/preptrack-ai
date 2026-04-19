@@ -26,10 +26,17 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api", routes);
 
-const frontendDistPath = path.resolve(__dirname, "../frontend/dist");
-const shouldServeFrontend = fs.existsSync(frontendDistPath);
+const frontendDistCandidates = [
+  path.resolve(process.cwd(), "frontend/dist"),
+  path.resolve(__dirname, "../frontend/dist"),
+  path.resolve(__dirname, "../../frontend/dist"),
+];
+
+const frontendDistPath = frontendDistCandidates.find((candidate) => fs.existsSync(candidate));
+const shouldServeFrontend = Boolean(frontendDistPath);
 
 if (shouldServeFrontend) {
+  console.log(`Serving frontend from: ${frontendDistPath}`);
   app.use(express.static(frontendDistPath));
 
   app.get(/^\/(?!api).*/, (_req, res) => {
