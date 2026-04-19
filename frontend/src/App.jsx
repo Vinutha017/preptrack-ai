@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 const TOKEN_KEY = 'preptrack_token'
 const PROJECT_NAME = 'PrepTrack AI'
 const PHASE_TEST_QUESTION_COUNT = 30
