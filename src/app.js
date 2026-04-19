@@ -28,8 +28,11 @@ app.use("/api", routes);
 
 const frontendDistCandidates = [
   path.resolve(process.cwd(), "frontend/dist"),
+  path.resolve(process.cwd(), "dist"),
   path.resolve(__dirname, "../frontend/dist"),
+  path.resolve(__dirname, "../dist"),
   path.resolve(__dirname, "../../frontend/dist"),
+  path.resolve(__dirname, "../../dist"),
 ];
 
 const frontendDistPath = frontendDistCandidates.find((candidate) => fs.existsSync(candidate));
