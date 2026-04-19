@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  font-family: 'Sora', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #374151;
+  background:
+    radial-gradient(circle at 12% 4%, rgba(122, 167, 245, 0.2), transparent 24%),
+    radial-gradient(circle at 90% 8%, rgba(131, 203, 187, 0.2), transparent 24%),
+    linear-gradient(180deg, #f6f9ff 0%, #eef4ff 52%, #f7fbff 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+body,
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+button,
+input,
+select {
+  border: 0;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+.eyebrow,
+.stat-card strong,
+.summary-card h2,
+.topbar h1 {
+  font-family: 'Space Grotesk', 'Trebuchet MS', sans-serif;
+}
+
+h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+a {
+  color: inherit;
+}
