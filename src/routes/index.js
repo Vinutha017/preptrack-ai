@@ -5,6 +5,7 @@ const progressRoutes = require("./progressRoutes");
 const testRoutes = require("./testRoutes");
 const analyticsRoutes = require("./analyticsRoutes");
 const studyRoutes = require("./studyRoutes");
+const adminRoutes = require("./adminRoutes");
 
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.use("/progress", progressRoutes);
 router.use("/tests", testRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/study", studyRoutes);
+router.use("/admin", adminRoutes);
 
 module.exports = router;
