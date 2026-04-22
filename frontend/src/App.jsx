@@ -506,15 +506,63 @@ function App() {
     const key = `${phase}:${itemId}`
     setChecklistSavingKey(key)
 
-    try {
-      await request(`/progress/${phase}/item`, {
-        method: 'PATCH',
-        token,
-        body: { itemId, completed },
+    const applyOptimisticProgress = (targetCompleted) => {
+      setProgress((current) => {
+        if (!current) return current
+
+        const next = {
+          ...current,
+          phaseWise: [...(current.phaseWise ?? [])],
+          phaseDetails: [...(current.phaseDetails ?? [])],
+        }
+
+        const detailIndex = next.phaseDetails.findIndex((item) => item.phase === phase)
+        if (detailIndex === -1) return current
+
+        const detail = { ...next.phaseDetails[detailIndex] }
+        const completedItems = new Set(detail.completedItems ?? [])
+        if (targetCompleted) completedItems.add(itemId)
+        else completedItems.delete(itemId)
+        detail.completedItems = [...completedItems]
+        next.phaseDetails[detailIndex] = detail
+
+        const phaseIndex = next.phaseWise.findIndex((item) => item.phase === phase)
+        if (phaseIndex !== -1) {
+          const phaseItem = { ...next.phaseWise[phaseIndex] }
+          phaseItem.completed = detail.completedItems.length
+          phaseItem.total = Number(phaseItem.total ?? detail.totalItems ?? 0)
+          phaseItem.percent = phaseItem.total ? Number(((phaseItem.completed / phaseItem.total) * 100).toFixed(2)) : 0
+          phaseItem.isComplete = phaseItem.total > 0 && phaseItem.completed >= phaseItem.total
+          next.phaseWise[phaseIndex] = phaseItem
+        }
+
+        const totalCompleted = next.phaseWise.reduce((sum, item) => sum + Number(item.completed ?? 0), 0)
+        const totalItems = next.phaseWise.reduce((sum, item) => sum + Number(item.total ?? 0), 0)
+
+        next.totalCompleted = totalCompleted
+        next.totalItems = totalItems
+        next.overallPercent = totalItems ? Number(((totalCompleted / totalItems) * 100).toFixed(2)) : 0
+
+        return next
       })
-      await request('/progress/daily-checkin', { method: 'POST', token })
-      await loadProfile(token)
+    }
+
+    applyOptimisticProgress(completed)
+
+    try {
+      await Promise.all([
+        request(`/progress/${phase}/item`, {
+          method: 'PATCH',
+          token,
+          body: { itemId, completed },
+        }),
+        request('/progress/daily-checkin', { method: 'POST', token }),
+      ])
+
+      const refreshedProgress = await request('/progress', { token })
+      setProgress(refreshedProgress)
     } catch (error) {
+      applyOptimisticProgress(!completed)
       setTestState((current) => ({ ...current, message: error.message }))
     } finally {
       setChecklistSavingKey('')
@@ -942,9 +990,9 @@ function App() {
                 </article>
               ))}
             </div>
-          ) : (
+          ) : testState.loading && !testState.message ? (
             <p className="hint-text">Preparing your test. If this takes long, go back and start again.</p>
-          )}
+          ) : null}
 
           {studyMessage ? <p className="status-text">{studyMessage}</p> : null}
 
