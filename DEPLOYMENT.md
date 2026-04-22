@@ -20,8 +20,8 @@ Example:
 ```env
 NODE_ENV=production
 PORT=5000
-MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/preptrack_ai
-JWT_SECRET=replace_with_long_random_secret
+MONGO_URI=mongodb+srv://<user>:abc-1721@cluster.mongodb.net/preptrack_ai
+JWT_SECRET=vinutha17022005
 JWT_EXPIRES_IN=7d
 CLIENT_URL=https://your-app-domain.com
 ```
@@ -39,8 +39,8 @@ VITE_API_BASE_URL=/api
 From repository root:
 
 ```bash
-npm install
-npm --prefix frontend install
+npm install --include=dev
+npm --prefix frontend install --include=dev
 npm run build
 ```
 
@@ -97,9 +97,11 @@ This repo includes `render.yaml` for a Blueprint-based deploy.
 
 Render uses:
 
-- Build command: `npm install && npm --prefix frontend install && npm run build`
+- Build command: `npm install --include=dev && npm --prefix frontend install --include=dev && npm run build`
 - Start command: `npm start`
 - Health check: `/api/health`
+
+If your final Render URL changes, update `CLIENT_URL` in Render environment variables.
 
 ## 9. Post-deploy Checks
 
