@@ -5,7 +5,7 @@ const Question = require("../models/Question");
 
 const router = express.Router();
 
-router.post("/seed-once", async (req, res, next) => {
+router.get("/seed-once", async (req, res, next) => {
   try {
     const questionCount = await Question.estimatedDocumentCount();
     
