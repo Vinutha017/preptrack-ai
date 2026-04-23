@@ -254,59 +254,9 @@ button:disabled {
   gap: 12px;
 }
 
-.bar-chart {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
-  align-items: end;
-}
-
-.subject-chart {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.bar-item {
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-  text-align: center;
-  color: var(--text-subtle);
-}
-
-.bar-item strong {
-  font-size: 0.95rem;
-  color: #0f172a;
-}
-
-.bar-item span {
-  font-size: 0.78rem;
-}
-
-.bar-track {
+.chart-shell {
   width: 100%;
-  min-height: 140px;
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  border-radius: 16px;
-  padding: 8px;
-  background: rgba(122, 167, 245, 0.14);
-}
-
-.subject-track {
-  background: rgba(131, 203, 187, 0.18);
-}
-
-.bar-track span {
-  width: 100%;
-  max-width: 38px;
-  border-radius: 999px 999px 8px 8px;
-  background: linear-gradient(180deg, #7aa7f5, #83cbbb);
-  min-height: 12px;
-}
-
-.subject-track span {
-  background: linear-gradient(180deg, #83cbbb, #61b9a8);
+  min-height: 250px;
 }
 
 .overall-percent {
@@ -390,6 +340,44 @@ button:disabled {
 .option-list {
   display: grid;
   gap: 12px;
+}
+
+.dsa-practice-panel {
+  border-radius: 16px;
+  border: 1px solid rgba(91, 141, 239, 0.3);
+  background: linear-gradient(135deg, rgba(122, 167, 245, 0.14), rgba(131, 203, 187, 0.18));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.dsa-quote {
+  margin: 0;
+  color: #334155;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.dsa-links-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dsa-link-chip {
+  text-decoration: none;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 141, 239, 0.32);
+  background: rgba(255, 255, 255, 0.84);
+  color: #33507f;
+  padding: 0.45rem 0.85rem;
+  font-weight: 600;
+  transition: transform 140ms ease, border-color 140ms ease;
+}
+
+.dsa-link-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(91, 141, 239, 0.62);
 }
 
 .checklist-grid {
@@ -621,11 +609,6 @@ button:disabled {
   .analytics-grid {
     grid-template-columns: 1fr;
   }
-
-  .bar-chart,
-  .subject-chart {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 640px) {
@@ -665,8 +648,4 @@ button:disabled {
     align-items: stretch;
   }
 
-  .bar-chart,
-  .subject-chart {
-    grid-template-columns: 1fr;
-  }
 }

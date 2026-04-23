@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import './App.css'
+
+const AuthScreen = lazy(() => import('./components/AuthScreen.jsx'))
+const TestScreen = lazy(() => import('./components/TestScreen.jsx'))
+const DashboardScreen = lazy(() => import('./components/DashboardScreen.jsx'))
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 const TOKEN_KEY = 'preptrack_token'
@@ -200,6 +204,23 @@ const CHECKLIST_TOPICS = {
   ],
 }
 
+const DSA_PRACTICE_LINKS = {
+  'dsa-time-space-complexity': 'https://leetcode.com/problem-list/oizxjoit/',
+  'dsa-arrays': 'https://leetcode.com/tag/array/',
+  'dsa-strings': 'https://leetcode.com/tag/string/',
+  'dsa-hashing': 'https://leetcode.com/tag/hash-table/',
+  'dsa-linked-list': 'https://leetcode.com/tag/linked-list/',
+  'dsa-stack': 'https://leetcode.com/tag/stack/',
+  'dsa-queue': 'https://leetcode.com/tag/queue/',
+  'dsa-recursion': 'https://leetcode.com/tag/recursion/',
+  'dsa-binary-search': 'https://leetcode.com/tag/binary-search/',
+  'dsa-trees-bst': 'https://leetcode.com/tag/tree/',
+  'dsa-heaps': 'https://leetcode.com/tag/heap-priority-queue/',
+  'dsa-graphs': 'https://leetcode.com/tag/graph/',
+  'dsa-backtracking': 'https://leetcode.com/tag/backtracking/',
+  'dsa-dynamic-programming': 'https://leetcode.com/tag/dynamic-programming/',
+}
+
 const defaultAuth = { name: '', email: '', password: '' }
 
 async function request(path, { method = 'GET', token, body } = {}) {
@@ -331,21 +352,19 @@ function App() {
   const analyticsCharts = useMemo(() => {
     if (!analytics) return null
 
-    const weeklyTrend = (analytics.trend ?? []).slice(-7)
-    const maxWeekly = Math.max(...weeklyTrend.map((item) => item.accuracy || 0), 100)
-    const weeklyBars = weeklyTrend.map((item) => ({
-      label: new Date(item.date).toLocaleDateString(undefined, { weekday: 'short' }),
-      value: item.accuracy,
-      height: `${Math.max(12, Math.round(((item.accuracy || 0) / maxWeekly) * 100))}%`,
+    const weeklyTrendData = (analytics.trend ?? []).slice(-7).map((item) => ({
+      day: new Date(item.date).toLocaleDateString(undefined, { weekday: 'short' }),
+      accuracy: Number(item.accuracy ?? 0),
+      tests: Number(item.testsTaken ?? 0),
     }))
 
-    const phaseAccuracy = (analytics.phaseAccuracy ?? []).map((item) => ({
-      label: item.phase,
-      value: item.accuracy,
-      height: `${Math.max(12, Math.round((item.accuracy / 100) * 100))}%`,
+    const phaseAccuracyData = (analytics.phaseAccuracy ?? []).map((item) => ({
+      phase: item.phase,
+      accuracy: Number(item.accuracy ?? 0),
+      tests: Number(item.testsTaken ?? 0),
     }))
 
-    return { weeklyBars, phaseAccuracy }
+    return { weeklyTrendData, phaseAccuracyData }
   }, [analytics])
 
   const derivedResult = useMemo(() => {
@@ -806,488 +825,89 @@ function App() {
 
   if (!signedIn) {
     return (
-      <main className="auth-page">
-        <section className="auth-card">
-          <p className="project-tag">Welcome to {PROJECT_NAME}</p>
-          <h1>{authMode === 'login' ? 'Login' : 'Sign up'}</h1>
-          <p className="hint-text">Sign in first, then choose one of 6 phases to update checklist and take tests.</p>
-
-          <form className="auth-form" onSubmit={handleAuthSubmit}>
-            {authMode === 'register' ? (
-              <label>
-                Name
-                <input
-                  type="text"
-                  value={authForm.name}
-                  onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))}
-                  required
-                />
-              </label>
-            ) : null}
-
-            <label>
-              Email
-              <input
-                type="email"
-                value={authForm.email}
-                onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
-                required
-              />
-            </label>
-
-            <label>
-              Password
-              <input
-                type="password"
-                value={authForm.password}
-                onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
-                required
-              />
-            </label>
-
-            <button type="submit" disabled={authLoading || booting}>
-              {authLoading ? 'Please wait...' : authMode === 'login' ? 'Login' : 'Create account'}
-            </button>
-          </form>
-
-          <button className="switch-mode" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
-            {authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Login'}
-          </button>
-
-          {authMessage ? <p className="status-text">{authMessage}</p> : null}
-        </section>
-      </main>
+      <Suspense fallback={<p className="hint-text">Loading sign-in screen...</p>}>
+        <AuthScreen
+          projectName={PROJECT_NAME}
+          authMode={authMode}
+          authForm={authForm}
+          setAuthForm={setAuthForm}
+          handleAuthSubmit={handleAuthSubmit}
+          authLoading={authLoading}
+          booting={booting}
+          setAuthMode={setAuthMode}
+          authMessage={authMessage}
+        />
+      </Suspense>
     )
   }
 
   if (activeView === 'test') {
     return (
-      <main className="test-page">
-        <header className="test-topbar">
-          <button className="back-button" onClick={goToDashboard}>Back to dashboard</button>
-          <div>
-            <p className="project-tag">{PROJECT_NAME}</p>
-            <h1>{selectedPhase} Test</h1>
-          </div>
-          <button onClick={handleLogout}>Logout</button>
-        </header>
-
-        <section className="test-section">
-          <div className="test-header">
-            <div>
-              <h3>{selectedPhase} questions</h3>
-              <p className="progress-text">Answered {answeredCount}/{generatedTest.length || 0}</p>
-            </div>
-            <div className="test-header-actions">
-              <p className={`timer-pill ${testTimer <= 60 ? 'timer-danger' : ''}`}>Time left: {formatTime(testTimer)}</p>
-              <button onClick={handleSubmitTest} disabled={!generatedTest.length || testState.loading}>
-                {testState.loading ? 'Submitting...' : 'Submit test'}
-              </button>
-            </div>
-          </div>
-
-          {generatedTest.length ? (
-            <div className="phase-progress-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((answeredCount / generatedTest.length) * 100)} aria-label="Test answer completion">
-              <span style={{ width: `${Math.round((answeredCount / generatedTest.length) * 100)}%` }} />
-            </div>
-          ) : null}
-
-          {testState.message ? <p className="status-text">{testState.message}</p> : null}
-
-          {derivedResult ? (
-            <section className="result-section">
-              <p className="result-text">
-                Score: {derivedResult.score}/{derivedResult.total} ({derivedResult.accuracy}%)
-              </p>
-
-              <div className="improvement-box">
-                <h3>Sections to improve</h3>
-                {derivedResult.weakAreas.length ? (
-                  <ul className="improvement-list">
-                    {derivedResult.weakAreas.slice(0, 3).map((item) => (
-                      <li key={`weak-${item.topic}`}>
-                        {item.topic}: {item.correct}/{item.total} correct ({item.accuracy}%)
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="hint-text">Great work. No weak section found below 60% in this test.</p>
-                )}
-              </div>
-            </section>
-          ) : null}
-
-          {testState.result && retakeState.questionIds.length ? (
-            <button className="take-test" onClick={handleRetakeWrongQuestions}>
-              Reattempt wrong questions ({retakeState.questionIds.length})
-            </button>
-          ) : null}
-
-          {generatedTest.length ? (
-            <div className="question-list">
-              {generatedTest.map((question, index) => (
-                <article key={question._id} className="question-card">
-                  {question.isInterviewFavorite ? <p className="interview-badge">Most Asked Interview Pattern</p> : null}
-                  <div className="question-card-head">
-                    <p className="question-title">Q{index + 1}. {question.question}</p>
-                    <button
-                      className="bookmark-button"
-                      disabled={studySavingId === String(question._id)}
-                      onClick={() => {
-                        const existing = studyMap.get(String(question._id))
-                        void upsertStudyItem({
-                          questionId: question._id,
-                          phase: question.phase,
-                          topic: question.topic,
-                          bookmarked: !(existing?.bookmarked ?? false),
-                          note: existing?.note ?? studyDrafts[question._id] ?? '',
-                        })
-                      }}
-                    >
-                      {studySavingId === String(question._id)
-                        ? 'Updating...'
-                        : studyMap.get(String(question._id))?.bookmarked
-                          ? 'Bookmarked'
-                          : 'Bookmark'}
-                    </button>
-                  </div>
-                  <div className="option-list">
-                    {question.options.map((option) => (
-                      <label
-                        key={option}
-                        className={
-                          testState.result
-                            ? option === reviewByQuestionId.get(String(question._id))?.correctAnswer
-                              ? 'answer-correct'
-                              : option === reviewByQuestionId.get(String(question._id))?.selectedAnswer
-                                ? 'answer-wrong'
-                                : ''
-                            : ''
-                        }
-                      >
-                        <input
-                          type="radio"
-                          name={question._id}
-                          checked={answers[question._id] === option}
-                          disabled={Boolean(testState.result)}
-                          onChange={() => setAnswers((current) => ({ ...current, [question._id]: option }))}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-
-                  {testState.result ? (
-                    <p className={`answer-summary ${reviewByQuestionId.get(String(question._id))?.isCorrect ? 'answer-summary-correct' : 'answer-summary-wrong'}`}>
-                      Your answer: {reviewByQuestionId.get(String(question._id))?.selectedAnswer || 'No answer'} | Correct answer: {reviewByQuestionId.get(String(question._id))?.correctAnswer || 'N/A'}
-                    </p>
-                  ) : null}
-
-                  <label className="note-field">
-                    <span>My note</span>
-                    <textarea
-                      rows="3"
-                      value={studyDrafts[question._id] ?? studyMap.get(String(question._id))?.note ?? ''}
-                      disabled={studySavingId === String(question._id)}
-                      onChange={(event) => setStudyDrafts((current) => ({ ...current, [question._id]: event.target.value }))}
-                      placeholder="Write a quick revision note"
-                    />
-                  </label>
-
-                  <div className="question-actions">
-                    <button
-                      className="take-test"
-                      disabled={studySavingId === String(question._id)}
-                      onClick={() => {
-                        const existing = studyMap.get(String(question._id))
-                        void upsertStudyItem({
-                          questionId: question._id,
-                          phase: question.phase,
-                          topic: question.topic,
-                          bookmarked: existing?.bookmarked ?? false,
-                          note: studyDrafts[question._id] ?? existing?.note ?? '',
-                        })
-                      }}
-                    >
-                      {studySavingId === String(question._id) ? 'Saving...' : 'Save note'}
-                    </button>
-                    {studyMap.get(String(question._id)) ? (
-                      <button
-                        className="danger-button"
-                        disabled={studySavingId === String(question._id)}
-                        onClick={() => void removeStudyItem(question._id)}
-                      >
-                        {studySavingId === String(question._id) ? 'Updating...' : 'Remove saved item'}
-                      </button>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : testState.loading && !testState.message ? (
-            <p className="hint-text">Preparing your test. If this takes long, go back and start again.</p>
-          ) : null}
-
-          {studyMessage ? <p className="status-text">{studyMessage}</p> : null}
-
-        </section>
-      </main>
+      <Suspense fallback={<p className="hint-text">Loading test screen...</p>}>
+        <TestScreen
+          projectName={PROJECT_NAME}
+          selectedPhase={selectedPhase}
+          goToDashboard={goToDashboard}
+          handleLogout={handleLogout}
+          answeredCount={answeredCount}
+          generatedTest={generatedTest}
+          testTimer={testTimer}
+          formatTime={formatTime}
+          handleSubmitTest={handleSubmitTest}
+          testState={testState}
+          derivedResult={derivedResult}
+          retakeState={retakeState}
+          handleRetakeWrongQuestions={handleRetakeWrongQuestions}
+          studySavingId={studySavingId}
+          studyMap={studyMap}
+          studyDrafts={studyDrafts}
+          upsertStudyItem={upsertStudyItem}
+          answers={answers}
+          setAnswers={setAnswers}
+          reviewByQuestionId={reviewByQuestionId}
+          setStudyDrafts={setStudyDrafts}
+          removeStudyItem={removeStudyItem}
+          studyMessage={studyMessage}
+        />
+      </Suspense>
     )
   }
 
   return (
-    <main className="dashboard-page">
-      <header className="dashboard-header">
-        <div>
-          <p className="project-tag">Welcome to {PROJECT_NAME}</p>
-          <h1>Hello {user?.name}, choose your phase</h1>
-        </div>
-        <button onClick={handleLogout}>Logout</button>
-      </header>
-
-      <section className="overall-progress-card">
-        <h3>Total completion</h3>
-        <p className="overall-percent">{overallPercent}%</p>
-        <p className="progress-text">
-          {progress ? `${progress.totalCompleted}/${progress.totalItems} checklist items completed` : 'No progress yet'}
-        </p>
-        <button className="danger-button" onClick={handleResetProgress} disabled={resettingProgress}>
-          {resettingProgress ? 'Resetting...' : 'Reset all checklist progress'}
-        </button>
-        {dashboardMessage ? <p className="status-text">{dashboardMessage}</p> : null}
-      </section>
-
-      {aiSummary ? (
-        <section className="ai-summary-card">
-          <div className="ai-summary-head">
-            <div>
-              <p className="project-tag">AI readiness</p>
-              <h3>{aiSummary.readinessLabel}</h3>
-            </div>
-            <p className="ai-score">{aiSummary.readinessScore}%</p>
-          </div>
-
-          <p className="progress-text">You are {aiSummary.readinessScore}% ready for interviews based on progress, accuracy, and consistency.</p>
-
-          {aiSummary.nextTopics.length ? (
-            <div className="ai-next-topics">
-              {aiSummary.nextTopics.map((item) => (
-                <div key={item.topic} className="ai-topic-pill">
-                  <strong>{item.topic}</strong>
-                  <span>{item.advice}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="hint-text">Finish a few tests to get personalized topic recommendations.</p>
-          )}
-        </section>
-      ) : null}
-
-      {analyticsCharts ? (
-        <section className="analytics-grid">
-          <article className="analytics-card">
-            <div className="analytics-head">
-              <div>
-                <p className="project-tag">Weekly progress</p>
-                <h3>Last 7 tests</h3>
-              </div>
-            </div>
-            <div className="bar-chart">
-              {analyticsCharts.weeklyBars.length ? analyticsCharts.weeklyBars.map((bar) => (
-                <div key={`${bar.label}-${bar.value}`} className="bar-item">
-                  <div className="bar-track">
-                    <span style={{ height: bar.height }} />
-                  </div>
-                  <strong>{bar.value}%</strong>
-                  <span>{bar.label}</span>
-                </div>
-              )) : <p className="hint-text">Complete tests to see weekly progress.</p>}
-            </div>
-          </article>
-
-          <article className="analytics-card">
-            <div className="analytics-head">
-              <div>
-                <p className="project-tag">Subject accuracy</p>
-                <h3>Accuracy by phase</h3>
-              </div>
-            </div>
-            <div className="bar-chart subject-chart">
-              {analyticsCharts.phaseAccuracy.length ? analyticsCharts.phaseAccuracy.map((bar) => (
-                <div key={bar.label} className="bar-item">
-                  <div className="bar-track subject-track">
-                    <span style={{ height: bar.height }} />
-                  </div>
-                  <strong>{bar.value}%</strong>
-                  <span>{bar.label}</span>
-                </div>
-              )) : <p className="hint-text">Take at least one test to see subject accuracy.</p>}
-            </div>
-          </article>
-        </section>
-      ) : null}
-
-      <section className="saved-study-card">
-        <div className="analytics-head">
-          <div>
-            <p className="project-tag">Saved study items</p>
-            <h3>Bookmarks and notes</h3>
-          </div>
-        </div>
-
-        {studyItems.length ? (
-          <div className="saved-study-list">
-            {studyItems.slice(0, 5).map((item) => (
-              <article key={String(item.questionId)} className="saved-study-item">
-                <div className="saved-study-top">
-                  <strong>{item.topic}</strong>
-                  {item.bookmarked ? <span className="bookmark-tag">Bookmarked</span> : null}
-                </div>
-                <p>{item.note || 'No note added yet.'}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="hint-text">Bookmark a question or add a note during a test to save it here.</p>
-        )}
-      </section>
-
-      <section className="phase-grid">
-        {ORDERED_PHASES.map((phase) => {
-          const phaseProgress = getPhaseProgress(phase.code)
-          const canTakeTest = isPhaseTestUnlocked(phase.code)
-          const isOpen = selectedPhase === phase.code
-          const baseTopics = CHECKLIST_TOPICS[phase.code] ?? []
-          const customTopics = (phaseDetailsMap.get(phase.code)?.customItems ?? []).map((item) => ({
-            id: item.itemId,
-            label: item.label,
-            isCustom: true,
-          }))
-          const phaseTopics = [...baseTopics, ...customTopics]
-          const phaseFilteredTopics = phaseTopics.filter((topic) =>
-            topic.label.toLowerCase().includes(checklistQuery.trim().toLowerCase())
-          )
-          return (
-            <article key={phase.code} className={`phase-card ${isOpen ? 'active' : ''}`}>
-              <h2>{phase.code}</h2>
-              <p>{phase.title}</p>
-              <p className="progress-text">
-                {phaseProgress ? `${phaseProgress.completed}/${phaseProgress.total} completed` : 'No progress yet'}
-              </p>
-              <p className="phase-percent">
-                {phaseProgress ? `${phaseProgress.percent}% complete` : '0% complete'}
-              </p>
-              <div className="phase-actions">
-                <button
-                  onClick={() => {
-                    setChecklistQuery('')
-                    setSelectedPhase((current) => (current === phase.code ? '' : phase.code))
-                  }}
-                >
-                  {isOpen ? 'Close checklist' : 'Open checklist'}
-                </button>
-                <button className="take-test" onClick={() => handleTakeTest(phase.code)} disabled={!canTakeTest}>
-                  Open test screen
-                </button>
-              </div>
-              {!canTakeTest ? <p className="hint-text">Finish all checklist topics to unlock this test.</p> : null}
-
-              {isOpen ? (
-                <section className="phase-checklist-section">
-                  <div className="checklist-head">
-                    <div>
-                      <h3>{phase.code} checklist</h3>
-                      <p className="progress-text">
-                        {phaseProgress?.completed ?? 0}/{phaseProgress?.total ?? phaseTopics.length} completed ({phaseProgress?.percent ?? 0}%)
-                      </p>
-                    </div>
-                    <label className="checklist-search">
-                      <span>Search topics</span>
-                      <input
-                        type="text"
-                        value={checklistQuery}
-                        onChange={(event) => setChecklistQuery(event.target.value)}
-                        placeholder="Type topic name"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="custom-checklist-add">
-                    <label>
-                      <span>Add your own checklist topic</span>
-                      <input
-                        type="text"
-                        value={customChecklistDrafts[phase.code] ?? ''}
-                        onChange={(event) =>
-                          setCustomChecklistDrafts((current) => ({
-                            ...current,
-                            [phase.code]: event.target.value,
-                          }))
-                        }
-                        placeholder="Example: OS IPC interview notes"
-                      />
-                    </label>
-                    <button
-                      className="take-test"
-                      onClick={() => void handleAddCustomChecklistItem(phase.code)}
-                      disabled={customChecklistSavingPhase === phase.code}
-                    >
-                      {customChecklistSavingPhase === phase.code ? 'Adding...' : 'Add topic'}
-                    </button>
-                  </div>
-
-                  <div
-                    className="phase-progress-bar"
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Number(phaseProgress?.percent) || 0}
-                    aria-label={`${phase.code} progress`}
-                  >
-                    <span style={{ width: `${Math.max(0, Math.min(100, Number(phaseProgress?.percent) || 0))}%` }} />
-                  </div>
-
-                  <p className="progress-text">Showing {phaseFilteredTopics.length} of {phaseTopics.length} topics</p>
-
-                  <div className="checklist-grid">
-                    {phaseFilteredTopics.map((topic) => {
-                      const checked = completedSet.has(topic.id)
-                      const saving = checklistSavingKey === `${phase.code}:${topic.id}`
-
-                      return (
-                        <div className={`check-item ${checked ? 'checked' : ''}`} key={topic.id}>
-                          <label className="check-item-main">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={saving}
-                              onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
-                            />
-                            <span>{topic.label}</span>
-                          </label>
-                          {topic.isCustom ? (
-                            <button
-                              type="button"
-                              className="mini-danger"
-                              disabled={saving}
-                              onClick={() => void handleRemoveCustomChecklistItem(phase.code, topic.id)}
-                            >
-                              {saving ? 'Removing...' : 'Remove'}
-                            </button>
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {!phaseFilteredTopics.length ? <p className="hint-text">No checklist topics match your search.</p> : null}
-                </section>
-              ) : null}
-            </article>
-          )
-        })}
-      </section>
-    </main>
+    <Suspense fallback={<p className="hint-text">Loading dashboard...</p>}>
+      <DashboardScreen
+        projectName={PROJECT_NAME}
+        user={user}
+        handleLogout={handleLogout}
+        overallPercent={overallPercent}
+        progress={progress}
+        handleResetProgress={handleResetProgress}
+        resettingProgress={resettingProgress}
+        dashboardMessage={dashboardMessage}
+        aiSummary={aiSummary}
+        analyticsCharts={analyticsCharts}
+        studyItems={studyItems}
+        orderedPhases={ORDERED_PHASES}
+        getPhaseProgress={getPhaseProgress}
+        isPhaseTestUnlocked={isPhaseTestUnlocked}
+        selectedPhase={selectedPhase}
+        setChecklistQuery={setChecklistQuery}
+        setSelectedPhase={setSelectedPhase}
+        handleTakeTest={handleTakeTest}
+        checklistTopics={CHECKLIST_TOPICS}
+        phaseDetailsMap={phaseDetailsMap}
+        checklistQuery={checklistQuery}
+        customChecklistDrafts={customChecklistDrafts}
+        setCustomChecklistDrafts={setCustomChecklistDrafts}
+        handleAddCustomChecklistItem={handleAddCustomChecklistItem}
+        customChecklistSavingPhase={customChecklistSavingPhase}
+        handleChecklistToggle={handleChecklistToggle}
+        checklistSavingKey={checklistSavingKey}
+        completedSet={completedSet}
+        handleRemoveCustomChecklistItem={handleRemoveCustomChecklistItem}
+        dsaPracticeLinks={DSA_PRACTICE_LINKS}
+      />
+    </Suspense>
   )
 }
 
