@@ -49,7 +49,7 @@ const getProgress = async (req, res, next) => {
   try {
     await ensureDefaultProgress(req.user._id);
     const [summary, details] = await Promise.all([
-      getProgressSummary(req.user._id),
+      getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt }),
       Progress.find({ userId: req.user._id }).sort({ phase: 1 }).lean(),
     ]);
 
@@ -103,7 +103,7 @@ const toggleProgressItem = async (req, res, next) => {
     }
 
     const phasePercent = calculateProgressPercent(progress.completedItems.length, progress.totalItems);
-    const overall = await getProgressSummary(req.user._id);
+    const overall = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
 
     return res.json({
       phase,
@@ -143,7 +143,7 @@ const addCustomChecklistItem = async (req, res, next) => {
     progress.totalItems = getTotalItemsForPhase(phase, progress.customItems);
     await progress.save();
 
-    const overall = await getProgressSummary(req.user._id);
+    const overall = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
     const phasePercent = calculateProgressPercent(progress.completedItems.length, progress.totalItems);
 
     return res.status(201).json({
@@ -181,7 +181,7 @@ const removeCustomChecklistItem = async (req, res, next) => {
     progress.totalItems = getTotalItemsForPhase(phase, progress.customItems);
     await progress.save();
 
-    const overall = await getProgressSummary(req.user._id);
+    const overall = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
     const phasePercent = calculateProgressPercent(progress.completedItems.length, progress.totalItems);
 
     return res.json({
@@ -200,7 +200,7 @@ const removeCustomChecklistItem = async (req, res, next) => {
 
 const getOverallProgress = async (req, res, next) => {
   try {
-    const summary = await getProgressSummary(req.user._id);
+    const summary = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
     return res.json({
       overallPercent: summary.overallPercent,
       phaseWise: summary.phaseWise,

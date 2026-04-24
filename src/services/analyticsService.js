@@ -17,7 +17,7 @@ const calculateProgressPercent = (completed, total) => {
   return Number(((completed / total) * 100).toFixed(2));
 };
 
-const getProgressSummary = async (userId) => {
+const getProgressSummary = async (userId, options = {}) => {
   const progressDocs = await Progress.find({ userId }).lean();
 
   const phaseWise = progressDocs.map((doc) => ({
@@ -35,7 +35,9 @@ const getProgressSummary = async (userId) => {
     return !item || !item.isComplete;
   });
 
-  const dailyChecklistUpdated = phaseWise.some((item) => isToday(item.updatedAt));
+  const dailyChecklistUpdated = options.lastChecklistUpdateAt
+    ? isToday(options.lastChecklistUpdateAt)
+    : phaseWise.some((item) => isToday(item.updatedAt));
 
   const totalCompleted = phaseWise.reduce((sum, item) => sum + item.completed, 0);
   const totalItems = phaseWise.reduce((sum, item) => sum + item.total, 0);

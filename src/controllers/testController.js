@@ -2,12 +2,22 @@ const TestHistory = require("../models/TestHistory");
 const { generateQuestions, evaluateTestSubmission } = require("../services/testEngineService");
 const { getProgressSummary, isToday } = require("../services/analyticsService");
 
+const stripPracticeSetSuffix = (value) =>
+  String(value || "").replace(/\s*\(\s*practice\s*set\s*\d+\s*\)\s*$/i, "");
+
+const normalizeQuestionText = (value) =>
+  stripPracticeSetSuffix(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const generateTest = async (req, res, next) => {
   try {
-    const { phase, topic, difficulty, limit, adaptive, retakeQuestionIds } = req.body;
+    const { phase, topic, difficulty, limit, adaptive, retakeQuestionIds, excludeQuestionIds } = req.body;
     const selectedPhase = phase || "DBMS";
 
-    const progressSummary = await getProgressSummary(req.user._id);
+    const progressSummary = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
 
     if (selectedPhase === "FINAL") {
       if (!progressSummary.allCoreCompleted) {
@@ -40,7 +50,29 @@ const generateTest = async (req, res, next) => {
       limit,
       adaptive,
       retakeQuestionIds,
+      excludeQuestionIds,
     });
+
+    const uniqueQuestionCount = new Set(questions.map((item) => normalizeQuestionText(item.question)).filter(Boolean)).size;
+    if (uniqueQuestionCount !== questions.length) {
+      return res.status(409).json({
+        message: `Generated set contains duplicate question text for ${selectedPhase}. Please try again.`,
+        phase: selectedPhase,
+        available: uniqueQuestionCount,
+        requested: Number(limit) || questions.length,
+      });
+    }
+
+    const requestedLimit = Number(limit);
+    const requiresExactCount = !retakeQuestionIds?.length && Number.isFinite(requestedLimit) && requestedLimit > 0;
+    if (requiresExactCount && questions.length < requestedLimit) {
+      return res.status(409).json({
+        message: `Only ${questions.length} unique questions are available for ${selectedPhase}. Add more unique questions to this phase to generate ${requestedLimit}.`,
+        phase: selectedPhase,
+        available: questions.length,
+        requested: requestedLimit,
+      });
+    }
 
     if (!questions.length) {
       return res.status(404).json({

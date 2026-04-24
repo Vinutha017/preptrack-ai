@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const AuthScreen = lazy(() => import('./components/AuthScreen.jsx'))
@@ -223,6 +223,26 @@ const DSA_PRACTICE_LINKS = {
 
 const defaultAuth = { name: '', email: '', password: '' }
 
+const stripPracticeSetSuffix = (value) =>
+  String(value || '').replace(/\s*\(\s*practice\s*set\s*\d+\s*\)\s*$/i, '')
+
+const normalizeQuestionText = (value) =>
+  stripPracticeSetSuffix(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+const uniqueQuestionsByText = (questions) => {
+  const seen = new Set()
+  return (questions ?? []).filter((question) => {
+    const key = normalizeQuestionText(question?.question) || String(question?._id)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 async function request(path, { method = 'GET', token, body } = {}) {
   const headers = { Accept: 'application/json' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -270,6 +290,13 @@ function App() {
   const [testState, setTestState] = useState({ loading: false, message: '', result: null })
   const [testTimer, setTestTimer] = useState(0)
   const [retakeState, setRetakeState] = useState({ questionIds: [], phase: '' })
+  const [servedQuestionIdsByPhase, setServedQuestionIdsByPhase] = useState({})
+  const [toasts, setToasts] = useState([])
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [resultModalOpen, setResultModalOpen] = useState(false)
+  const [showAllWeakAreas, setShowAllWeakAreas] = useState(false)
+  const toastIdRef = useRef(0)
+  const toastTimeoutsRef = useRef(new Map())
 
   const signedIn = Boolean(token && user)
   const overallPercent = progress?.overallPercent ?? 0
@@ -300,8 +327,14 @@ function App() {
   const aiSummary = useMemo(() => {
     if (!analytics) return null
 
+    const noMeasuredLearningYet =
+      Number(analytics.progress?.overallPercent ?? 0) === 0 &&
+      Number(analytics.accuracy?.overallAccuracy ?? 0) === 0
+
+    const readinessScore = noMeasuredLearningYet ? 0 : analytics.readinessScore ?? 0
+
     return {
-      readinessScore: analytics.readinessScore ?? 0,
+      readinessScore,
       readinessLabel: analytics.readinessLabel ?? 'Building momentum',
       nextTopics: analytics.nextTopics ?? [],
     }
@@ -310,6 +343,98 @@ function App() {
   const studyMap = useMemo(() => {
     return new Map(studyItems.map((item) => [String(item.questionId), item]))
   }, [studyItems])
+
+  const scheduleToastRemoval = (id, timeoutMs = 4200) => {
+    const existingTimeout = toastTimeoutsRef.current.get(id)
+    if (existingTimeout) {
+      window.clearTimeout(existingTimeout)
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      toastTimeoutsRef.current.delete(id)
+      setToasts((current) => current.filter((item) => item.id !== id))
+    }, timeoutMs)
+
+    toastTimeoutsRef.current.set(id, timeoutId)
+  }
+
+  const clearToastTimer = (id) => {
+    const timeoutId = toastTimeoutsRef.current.get(id)
+    if (timeoutId) {
+      window.clearTimeout(timeoutId)
+      toastTimeoutsRef.current.delete(id)
+    }
+  }
+
+  const pushToast = (message, variant = 'info') => {
+    if (!message) return
+
+    const id = `toast-${Date.now()}-${toastIdRef.current++}`
+    setToasts((current) => [...current, { id, message, variant }])
+    scheduleToastRemoval(id, 4200)
+  }
+
+  const dismissToast = (id) => {
+    clearToastTimer(id)
+    setToasts((current) => current.filter((item) => item.id !== id))
+  }
+
+  const resetAuthForm = () => {
+    setAuthForm(defaultAuth)
+    setAuthMessage('')
+    setAuthLoading(false)
+  }
+
+  const handleToastMouseEnter = (id) => {
+    clearToastTimer(id)
+  }
+
+  const handleToastMouseLeave = (id) => {
+    scheduleToastRemoval(id, 2200)
+  }
+
+  useEffect(() => {
+    if (!authMessage) return
+    pushToast(authMessage, /success|logged in|account created/i.test(authMessage) ? 'success' : 'error')
+    setAuthMessage('')
+  }, [authMessage])
+
+  useEffect(() => {
+    if (!dashboardMessage) return
+    pushToast(dashboardMessage, /added|removed|reset/i.test(dashboardMessage) ? 'success' : 'error')
+    setDashboardMessage('')
+  }, [dashboardMessage])
+
+  useEffect(() => {
+    if (!studyMessage) return
+    pushToast(studyMessage, 'error')
+    setStudyMessage('')
+  }, [studyMessage])
+
+  useEffect(() => {
+    if (!testState.message) return
+
+    const message = testState.message
+    const variant = /success|loaded|generating|preparing|submitting|time is up/i.test(message) ? 'info' : 'error'
+    pushToast(message, variant)
+    setTestState((current) => (current.message ? { ...current, message: '' } : current))
+  }, [testState.message])
+
+  useEffect(() => {
+    // Whenever auth UI becomes active (new/ended session), start with a clean form.
+    if (!signedIn && !booting) {
+      resetAuthForm()
+    }
+  }, [signedIn, booting])
+
+  useEffect(() => {
+    return () => {
+      toastTimeoutsRef.current.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId)
+      })
+      toastTimeoutsRef.current.clear()
+    }
+  }, [])
 
   useEffect(() => {
     if (activeView !== 'test' || !generatedTest.length || testState.result) return undefined
@@ -524,16 +649,39 @@ function App() {
     }
   }
 
+  const handleAuthModeChange = (nextMode) => {
+    setAuthMode(nextMode)
+    resetAuthForm()
+  }
+
   const handleLogout = () => {
     localStorage.removeItem(TOKEN_KEY)
     setToken('')
     setUser(null)
     setProgress(null)
+    setAnalytics(null)
+    setStudyItems([])
+    setStudyDrafts({})
+    setStudyMessage('')
+    setStudySavingId('')
     setActiveView('dashboard')
     setGeneratedTest([])
     setAnswers({})
     setTestState({ loading: false, message: '', result: null })
-    setStudyMessage('')
+    setRetakeState({ questionIds: [], phase: '' })
+    setTestTimer(0)
+    setDashboardMessage('')
+    setAuthMode('login')
+    resetAuthForm()
+    setChecklistQuery('')
+    setChecklistSavingKey('')
+    setCustomChecklistDrafts({})
+    setCustomChecklistSavingPhase('')
+    setResettingProgress(false)
+    setResetConfirmOpen(false)
+    setResultModalOpen(false)
+    setShowAllWeakAreas(false)
+    setServedQuestionIdsByPhase({})
   }
 
   const handleChecklistToggle = async (phase, itemId, completed) => {
@@ -607,10 +755,14 @@ function App() {
   const handleResetProgress = async () => {
     if (!token || resettingProgress) return
 
-    const shouldReset = window.confirm('Reset all checklist progress across every phase?')
-    if (!shouldReset) return
+    setResetConfirmOpen(true)
+  }
+
+  const confirmResetProgress = async () => {
+    if (!token || resettingProgress) return
 
     setResettingProgress(true)
+    setResetConfirmOpen(false)
     setDashboardMessage('')
 
     try {
@@ -623,6 +775,7 @@ function App() {
       setGeneratedTest([])
       setAnswers({})
       setTestState({ loading: false, message: '', result: null })
+      setResultModalOpen(false)
     } catch (error) {
       setDashboardMessage(error.message)
     } finally {
@@ -695,6 +848,8 @@ function App() {
 
     setActiveView('test')
     setSelectedPhase(phase)
+    setResultModalOpen(false)
+    setShowAllWeakAreas(false)
     setGeneratedTest([])
     setAnswers({})
     setRetakeState({ questionIds: [], phase })
@@ -705,7 +860,13 @@ function App() {
       const data = await request('/tests/generate', {
         method: 'POST',
         token,
-        body: { phase, limit: PHASE_TEST_QUESTION_COUNT, adaptive: false, difficulty: null },
+        body: {
+          phase,
+          limit: PHASE_TEST_QUESTION_COUNT,
+          adaptive: false,
+          difficulty: null,
+          excludeQuestionIds: servedQuestionIdsByPhase[phase] ?? [],
+        },
       })
 
       if (!(data.questions ?? []).length) {
@@ -717,10 +878,25 @@ function App() {
         return
       }
 
-      setGeneratedTest(data.questions ?? [])
-      setTestTimer((data.questions?.length ?? PHASE_TEST_QUESTION_COUNT) * 90)
+      const uniqueQuestions = uniqueQuestionsByText(data.questions ?? [])
+      if (uniqueQuestions.length < PHASE_TEST_QUESTION_COUNT) {
+        setTestState({
+          loading: false,
+          message: `Only ${uniqueQuestions.length} unique questions were returned for ${phase}. Please try again.`,
+          result: null,
+        })
+        return
+      }
+
+      setGeneratedTest(uniqueQuestions)
+      setServedQuestionIdsByPhase((current) => {
+        const existing = current[phase] ?? []
+        const next = new Set([...existing, ...uniqueQuestions.map((question) => String(question._id))])
+        return { ...current, [phase]: [...next] }
+      })
+      setTestTimer((uniqueQuestions.length ?? PHASE_TEST_QUESTION_COUNT) * 90)
       setTestState({ loading: false, message: `${data.count} questions loaded for ${phase}.`, result: null })
-      await loadStudyItems(token, (data.questions ?? []).map((question) => question._id))
+      await loadStudyItems(token, uniqueQuestions.map((question) => question._id))
     } catch (error) {
       setTestState({ loading: false, message: error.message, result: null })
     }
@@ -731,6 +907,8 @@ function App() {
 
     setActiveView('test')
     setSelectedPhase(retakeState.phase || selectedPhase)
+    setResultModalOpen(false)
+    setShowAllWeakAreas(false)
     setGeneratedTest([])
     setAnswers({})
     setTestTimer(0)
@@ -757,8 +935,9 @@ function App() {
         return
       }
 
-      setGeneratedTest(data.questions ?? [])
-      setTestTimer((data.questions?.length ?? retakeState.questionIds.length) * 90)
+      const uniqueQuestions = uniqueQuestionsByText(data.questions ?? [])
+      setGeneratedTest(uniqueQuestions)
+      setTestTimer((uniqueQuestions.length ?? retakeState.questionIds.length) * 90)
       setTestState({ loading: false, message: 'Retake loaded with wrong questions.', result: null })
     } catch (error) {
       setTestState({ loading: false, message: error.message, result: null })
@@ -767,6 +946,7 @@ function App() {
 
   const goToDashboard = () => {
     setActiveView('dashboard')
+    setResultModalOpen(false)
   }
 
   const handleSubmitTest = async () => {
@@ -800,6 +980,8 @@ function App() {
         message: 'Test submitted successfully.',
         result: data,
       })
+      setResultModalOpen(true)
+      setShowAllWeakAreas(false)
       setRetakeState({
         phase: selectedPhase,
         questionIds: data.wrongQuestionIds ?? [],
@@ -811,103 +993,209 @@ function App() {
     }
   }
 
+  const displayedWeakAreas =
+    derivedResult?.weakAreas && !showAllWeakAreas
+      ? derivedResult.weakAreas.slice(0, 3)
+      : derivedResult?.weakAreas ?? []
+
+  const overlays = (
+    <>
+      {resetConfirmOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="app-modal" role="dialog" aria-modal="true" aria-labelledby="reset-modal-title">
+            <h3 id="reset-modal-title">Reset Checklist Progress</h3>
+            <p className="progress-text">This will remove completed checklist state across every phase. This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button type="button" className="ghost-button" onClick={() => setResetConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="danger-button" onClick={() => void confirmResetProgress()}>
+                Yes, reset
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {resultModalOpen && derivedResult ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="app-modal result-modal" role="dialog" aria-modal="true" aria-labelledby="result-modal-title">
+            <div className="modal-head">
+              <h3 id="result-modal-title">Test result summary</h3>
+              <button type="button" className="ghost-button" onClick={() => setResultModalOpen(false)}>
+                Close
+              </button>
+            </div>
+
+            <p className="result-text">
+              Score: {derivedResult.score}/{derivedResult.total} ({derivedResult.accuracy}%)
+            </p>
+
+            <div className="improvement-box">
+              <h3>Sections to improve</h3>
+              {displayedWeakAreas.length ? (
+                <ul className="improvement-list">
+                  {displayedWeakAreas.map((item) => (
+                    <li key={`modal-weak-${item.topic}`}>
+                      {item.topic}: {item.correct}/{item.total} correct ({item.accuracy}%)
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="hint-text">Great work. No weak section found below 60% in this test.</p>
+              )}
+
+              {derivedResult.weakAreas.length > 3 ? (
+                <button className="show-more-button" onClick={() => setShowAllWeakAreas((current) => !current)}>
+                  {showAllWeakAreas ? 'Show fewer sections' : `Show more (${derivedResult.weakAreas.length - 3} more)`}
+                </button>
+              ) : null}
+            </div>
+
+            <div className="modal-actions">
+              {retakeState.questionIds.length ? (
+                <button
+                  type="button"
+                  className="take-test"
+                  onClick={() => {
+                    setResultModalOpen(false)
+                    void handleRetakeWrongQuestions()
+                  }}
+                >
+                  Reattempt wrong questions ({retakeState.questionIds.length})
+                </button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {toasts.length ? (
+        <section className="toast-stack" aria-live="polite" aria-label="Notifications">
+          {toasts.map((toast) => (
+            <article
+              key={toast.id}
+              className={`toast-item toast-${toast.variant}`}
+              onMouseEnter={() => handleToastMouseEnter(toast.id)}
+              onMouseLeave={() => handleToastMouseLeave(toast.id)}
+            >
+              <p>{toast.message}</p>
+              <button type="button" className="toast-close" onClick={() => dismissToast(toast.id)}>
+                Dismiss
+              </button>
+            </article>
+          ))}
+        </section>
+      ) : null}
+    </>
+  )
+
   if (signedIn && booting) {
     return (
-      <main className="dashboard-page">
-        <section className="overall-progress-card loading-card">
-          <p className="project-tag">{PROJECT_NAME}</p>
-          <h1>Loading your dashboard</h1>
-          <p className="hint-text">Fetching progress, analytics, and saved study items.</p>
-        </section>
-      </main>
+      <>
+        <main className="dashboard-page">
+          <section className="overall-progress-card loading-card">
+            <p className="project-tag">{PROJECT_NAME}</p>
+            <h1>Loading your dashboard</h1>
+            <p className="hint-text">Fetching progress, analytics, and saved study items.</p>
+          </section>
+        </main>
+        {overlays}
+      </>
     )
   }
 
   if (!signedIn) {
     return (
-      <Suspense fallback={<p className="hint-text">Loading sign-in screen...</p>}>
-        <AuthScreen
-          projectName={PROJECT_NAME}
-          authMode={authMode}
-          authForm={authForm}
-          setAuthForm={setAuthForm}
-          handleAuthSubmit={handleAuthSubmit}
-          authLoading={authLoading}
-          booting={booting}
-          setAuthMode={setAuthMode}
-          authMessage={authMessage}
-        />
-      </Suspense>
+      <>
+        <Suspense fallback={<p className="hint-text">Loading sign-in screen...</p>}>
+          <AuthScreen
+            projectName={PROJECT_NAME}
+            authMode={authMode}
+            authForm={authForm}
+            setAuthForm={setAuthForm}
+            handleAuthSubmit={handleAuthSubmit}
+            authLoading={authLoading}
+            booting={booting}
+            setAuthMode={handleAuthModeChange}
+          />
+        </Suspense>
+        {overlays}
+      </>
     )
   }
 
   if (activeView === 'test') {
     return (
-      <Suspense fallback={<p className="hint-text">Loading test screen...</p>}>
-        <TestScreen
-          projectName={PROJECT_NAME}
-          selectedPhase={selectedPhase}
-          goToDashboard={goToDashboard}
-          handleLogout={handleLogout}
-          answeredCount={answeredCount}
-          generatedTest={generatedTest}
-          testTimer={testTimer}
-          formatTime={formatTime}
-          handleSubmitTest={handleSubmitTest}
-          testState={testState}
-          derivedResult={derivedResult}
-          retakeState={retakeState}
-          handleRetakeWrongQuestions={handleRetakeWrongQuestions}
-          studySavingId={studySavingId}
-          studyMap={studyMap}
-          studyDrafts={studyDrafts}
-          upsertStudyItem={upsertStudyItem}
-          answers={answers}
-          setAnswers={setAnswers}
-          reviewByQuestionId={reviewByQuestionId}
-          setStudyDrafts={setStudyDrafts}
-          removeStudyItem={removeStudyItem}
-          studyMessage={studyMessage}
-        />
-      </Suspense>
+      <>
+        <Suspense fallback={<p className="hint-text">Loading test screen...</p>}>
+          <TestScreen
+            projectName={PROJECT_NAME}
+            selectedPhase={selectedPhase}
+            goToDashboard={goToDashboard}
+            handleLogout={handleLogout}
+            answeredCount={answeredCount}
+            generatedTest={generatedTest}
+            testTimer={testTimer}
+            formatTime={formatTime}
+            handleSubmitTest={handleSubmitTest}
+            testState={testState}
+            retakeState={retakeState}
+            handleRetakeWrongQuestions={handleRetakeWrongQuestions}
+            openResultModal={() => setResultModalOpen(true)}
+            studySavingId={studySavingId}
+            studyMap={studyMap}
+            studyDrafts={studyDrafts}
+            upsertStudyItem={upsertStudyItem}
+            answers={answers}
+            setAnswers={setAnswers}
+            reviewByQuestionId={reviewByQuestionId}
+            setStudyDrafts={setStudyDrafts}
+            removeStudyItem={removeStudyItem}
+          />
+        </Suspense>
+        {overlays}
+      </>
     )
   }
 
   return (
-    <Suspense fallback={<p className="hint-text">Loading dashboard...</p>}>
-      <DashboardScreen
-        projectName={PROJECT_NAME}
-        user={user}
-        handleLogout={handleLogout}
-        overallPercent={overallPercent}
-        progress={progress}
-        handleResetProgress={handleResetProgress}
-        resettingProgress={resettingProgress}
-        dashboardMessage={dashboardMessage}
-        aiSummary={aiSummary}
-        analyticsCharts={analyticsCharts}
-        studyItems={studyItems}
-        orderedPhases={ORDERED_PHASES}
-        getPhaseProgress={getPhaseProgress}
-        isPhaseTestUnlocked={isPhaseTestUnlocked}
-        selectedPhase={selectedPhase}
-        setChecklistQuery={setChecklistQuery}
-        setSelectedPhase={setSelectedPhase}
-        handleTakeTest={handleTakeTest}
-        checklistTopics={CHECKLIST_TOPICS}
-        phaseDetailsMap={phaseDetailsMap}
-        checklistQuery={checklistQuery}
-        customChecklistDrafts={customChecklistDrafts}
-        setCustomChecklistDrafts={setCustomChecklistDrafts}
-        handleAddCustomChecklistItem={handleAddCustomChecklistItem}
-        customChecklistSavingPhase={customChecklistSavingPhase}
-        handleChecklistToggle={handleChecklistToggle}
-        checklistSavingKey={checklistSavingKey}
-        completedSet={completedSet}
-        handleRemoveCustomChecklistItem={handleRemoveCustomChecklistItem}
-        dsaPracticeLinks={DSA_PRACTICE_LINKS}
-      />
-    </Suspense>
+    <>
+      <Suspense fallback={<p className="hint-text">Loading dashboard...</p>}>
+        <DashboardScreen
+          projectName={PROJECT_NAME}
+          user={user}
+          handleLogout={handleLogout}
+          overallPercent={overallPercent}
+          progress={progress}
+          handleResetProgress={handleResetProgress}
+          resettingProgress={resettingProgress}
+          aiSummary={aiSummary}
+          analyticsCharts={analyticsCharts}
+          studyItems={studyItems}
+          orderedPhases={ORDERED_PHASES}
+          getPhaseProgress={getPhaseProgress}
+          isPhaseTestUnlocked={isPhaseTestUnlocked}
+          selectedPhase={selectedPhase}
+          setChecklistQuery={setChecklistQuery}
+          setSelectedPhase={setSelectedPhase}
+          handleTakeTest={handleTakeTest}
+          checklistTopics={CHECKLIST_TOPICS}
+          phaseDetailsMap={phaseDetailsMap}
+          checklistQuery={checklistQuery}
+          customChecklistDrafts={customChecklistDrafts}
+          setCustomChecklistDrafts={setCustomChecklistDrafts}
+          handleAddCustomChecklistItem={handleAddCustomChecklistItem}
+          customChecklistSavingPhase={customChecklistSavingPhase}
+          handleChecklistToggle={handleChecklistToggle}
+          checklistSavingKey={checklistSavingKey}
+          completedSet={completedSet}
+          handleRemoveCustomChecklistItem={handleRemoveCustomChecklistItem}
+          dsaPracticeLinks={DSA_PRACTICE_LINKS}
+        />
+      </Suspense>
+      {overlays}
+    </>
   )
 }
 

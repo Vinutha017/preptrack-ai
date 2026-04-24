@@ -4,7 +4,7 @@ const { buildRecommendations } = require("../services/recommendationService");
 const overview = async (req, res, next) => {
   try {
     const [progress, accuracy, trend] = await Promise.all([
-      getProgressSummary(req.user._id),
+      getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt }),
       getAccuracySnapshot(req.user._id),
       getRecentTrend(req.user._id),
     ]);

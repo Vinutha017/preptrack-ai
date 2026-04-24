@@ -4,11 +4,11 @@
   font-family: 'Sora', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #374151;
+  color: #24344d;
   background:
-    radial-gradient(circle at 12% 4%, rgba(122, 167, 245, 0.2), transparent 24%),
-    radial-gradient(circle at 90% 8%, rgba(131, 203, 187, 0.2), transparent 24%),
-    linear-gradient(180deg, #f6f9ff 0%, #eef4ff 52%, #f7fbff 100%);
+    radial-gradient(circle at 8% 2%, rgba(37, 99, 235, 0.2), transparent 30%),
+    radial-gradient(circle at 92% 7%, rgba(20, 184, 166, 0.2), transparent 32%),
+    linear-gradient(180deg, #f5f8ff 0%, #edf3ff 52%, #f8fbff 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,6 +27,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: #24344d;
 }
 
 body,

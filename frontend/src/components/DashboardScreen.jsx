@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import DsaPracticePanel from './DsaPracticePanel.jsx'
 
 const AnalyticsCharts = lazy(() => import('./AnalyticsCharts.jsx'))
@@ -11,7 +11,6 @@ function DashboardScreen({
   progress,
   handleResetProgress,
   resettingProgress,
-  dashboardMessage,
   aiSummary,
   analyticsCharts,
   studyItems,
@@ -35,6 +34,17 @@ function DashboardScreen({
   handleRemoveCustomChecklistItem,
   dsaPracticeLinks,
 }) {
+  const [showAllSavedItems, setShowAllSavedItems] = useState(false)
+  const [expandedChecklistPhases, setExpandedChecklistPhases] = useState({})
+  const [phaseTab, setPhaseTab] = useState('ALL')
+  const savedItemsToDisplay = showAllSavedItems ? studyItems : studyItems.slice(0, 5)
+  const normalizedChecklistQuery = useMemo(() => checklistQuery.trim().toLowerCase(), [checklistQuery])
+  const phaseTabs = useMemo(() => ['ALL', ...orderedPhases.map((phase) => phase.code)], [orderedPhases])
+  const visiblePhases = useMemo(
+    () => (phaseTab === 'ALL' ? orderedPhases : orderedPhases.filter((phase) => phase.code === phaseTab)),
+    [orderedPhases, phaseTab]
+  )
+
   return (
     <main className="dashboard-page">
       <header className="dashboard-header">
@@ -54,7 +64,6 @@ function DashboardScreen({
         <button className="danger-button" onClick={handleResetProgress} disabled={resettingProgress}>
           {resettingProgress ? 'Resetting...' : 'Reset all checklist progress'}
         </button>
-        {dashboardMessage ? <p className="status-text">{dashboardMessage}</p> : null}
       </section>
 
       {aiSummary ? (
@@ -99,24 +108,49 @@ function DashboardScreen({
         </div>
 
         {studyItems.length ? (
-          <div className="saved-study-list">
-            {studyItems.slice(0, 5).map((item) => (
-              <article key={String(item.questionId)} className="saved-study-item">
-                <div className="saved-study-top">
-                  <strong>{item.topic}</strong>
-                  {item.bookmarked ? <span className="bookmark-tag">Bookmarked</span> : null}
-                </div>
-                <p>{item.note || 'No note added yet.'}</p>
-              </article>
-            ))}
-          </div>
+          <>
+            <div className="saved-study-list">
+              {savedItemsToDisplay.map((item) => (
+                <article key={String(item.questionId)} className="saved-study-item">
+                  <div className="saved-study-top">
+                    <strong>{item.topic}</strong>
+                    {item.bookmarked ? <span className="bookmark-tag">Bookmarked</span> : null}
+                  </div>
+                  <p>{item.note || 'No note added yet.'}</p>
+                </article>
+              ))}
+            </div>
+            {studyItems.length > 5 ? (
+              <button className="show-more-button" onClick={() => setShowAllSavedItems((current) => !current)}>
+                {showAllSavedItems ? 'Show less' : `Show more (${studyItems.length - 5} more)`}
+              </button>
+            ) : null}
+          </>
         ) : (
           <p className="hint-text">Bookmark a question or add a note during a test to save it here.</p>
         )}
       </section>
 
+      <section className="phase-tabs" role="tablist" aria-label="Phase tabs">
+        {phaseTabs.map((tabCode) => {
+          const isActiveTab = phaseTab === tabCode
+          return (
+            <button
+              key={tabCode}
+              type="button"
+              role="tab"
+              aria-selected={isActiveTab}
+              className={`phase-tab ${isActiveTab ? 'active' : ''}`}
+              onClick={() => setPhaseTab(tabCode)}
+            >
+              {tabCode === 'ALL' ? 'All phases' : tabCode}
+            </button>
+          )
+        })}
+      </section>
+
       <section className="phase-grid">
-        {orderedPhases.map((phase) => {
+        {visiblePhases.map((phase) => {
           const phaseProgress = getPhaseProgress(phase.code)
           const canTakeTest = isPhaseTestUnlocked(phase.code)
           const isOpen = selectedPhase === phase.code
@@ -127,9 +161,20 @@ function DashboardScreen({
             isCustom: true,
           }))
           const phaseTopics = [...baseTopics, ...customTopics]
-          const phaseFilteredTopics = phaseTopics.filter((topic) =>
-            topic.label.toLowerCase().includes(checklistQuery.trim().toLowerCase())
-          )
+          const coreFilteredTopics = baseTopics.filter((topic) => topic.label.toLowerCase().includes(normalizedChecklistQuery))
+          const customFilteredTopics = customTopics.filter((topic) => topic.label.toLowerCase().includes(normalizedChecklistQuery))
+          const phaseFilteredTopics = [...coreFilteredTopics, ...customFilteredTopics]
+          const phaseKey = phase.code
+          const coreExpandKey = `${phaseKey}:core`
+          const customExpandKey = `${phaseKey}:custom`
+          const showAllCoreItems = Boolean(expandedChecklistPhases[coreExpandKey])
+          const showAllCustomItems = Boolean(expandedChecklistPhases[customExpandKey])
+          const shouldTruncateCore = coreFilteredTopics.length > 10
+          const shouldTruncateCustom = customFilteredTopics.length > 8
+          const displayedCoreTopics = shouldTruncateCore && !showAllCoreItems ? coreFilteredTopics.slice(0, 10) : coreFilteredTopics
+          const displayedCustomTopics = shouldTruncateCustom && !showAllCustomItems ? customFilteredTopics.slice(0, 8) : customFilteredTopics
+          const displayedChecklistItems = [...displayedCoreTopics, ...displayedCustomTopics]
+
           return (
             <article key={phase.code} className={`phase-card ${isOpen ? 'active' : ''}`}>
               <h2>{phase.code}</h2>
@@ -210,42 +255,110 @@ function DashboardScreen({
                     <span style={{ width: `${Math.max(0, Math.min(100, Number(phaseProgress?.percent) || 0))}%` }} />
                   </div>
 
-                  <p className="progress-text">Showing {phaseFilteredTopics.length} of {phaseTopics.length} topics</p>
+                  <p className="progress-text">Showing {displayedChecklistItems.length} of {phaseTopics.length} topics</p>
 
                   {phase.code === 'DSA' ? (
                     <DsaPracticePanel baseTopics={baseTopics} dsaPracticeLinks={dsaPracticeLinks} />
                   ) : null}
 
-                  <div className="checklist-grid">
-                    {phaseFilteredTopics.map((topic) => {
-                      const checked = completedSet.has(topic.id)
-                      const saving = checklistSavingKey === `${phase.code}:${topic.id}`
+                  {displayedCoreTopics.length ? (
+                    <div className="checklist-section-group">
+                      <div className="checklist-group-head">
+                        <h4>Core checklist</h4>
+                        <span>{displayedCoreTopics.length}/{coreFilteredTopics.length}</span>
+                      </div>
+                      <div className="checklist-grid">
+                        {displayedCoreTopics.map((topic) => {
+                          const checked = completedSet.has(topic.id)
+                          const saving = checklistSavingKey === `${phase.code}:${topic.id}`
 
-                      return (
-                        <div className={`check-item ${checked ? 'checked' : ''}`} key={topic.id}>
-                          <label className="check-item-main">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={saving}
-                              onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
-                            />
-                            <span>{topic.label}</span>
-                          </label>
-                          {topic.isCustom ? (
-                            <button
-                              type="button"
-                              className="mini-danger"
-                              disabled={saving}
-                              onClick={() => void handleRemoveCustomChecklistItem(phase.code, topic.id)}
-                            >
-                              {saving ? 'Removing...' : 'Remove'}
-                            </button>
-                          ) : null}
-                        </div>
-                      )
-                    })}
+                          return (
+                            <div className={`check-item ${checked ? 'checked' : ''}`} key={topic.id}>
+                              <label className="check-item-main">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={saving}
+                                  onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
+                                />
+                                <span>{topic.label}</span>
+                              </label>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {shouldTruncateCore ? (
+                        <button
+                          className="show-more-button"
+                          onClick={() =>
+                            setExpandedChecklistPhases((current) => ({
+                              ...current,
+                              [coreExpandKey]: !showAllCoreItems,
+                            }))
+                          }
+                        >
+                          {showAllCoreItems
+                            ? 'Show fewer core topics'
+                            : `Show more core topics (${coreFilteredTopics.length - displayedCoreTopics.length} more)`}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="checklist-section-group">
+                    <div className="checklist-group-head">
+                      <h4>Custom checklist</h4>
+                      <span>{displayedCustomTopics.length}/{customFilteredTopics.length}</span>
+                    </div>
+                    {displayedCustomTopics.length ? (
+                      <div className="checklist-grid">
+                        {displayedCustomTopics.map((topic) => {
+                          const checked = completedSet.has(topic.id)
+                          const saving = checklistSavingKey === `${phase.code}:${topic.id}`
+
+                          return (
+                            <div className={`check-item ${checked ? 'checked' : ''}`} key={topic.id}>
+                              <label className="check-item-main">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={saving}
+                                  onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
+                                />
+                                <span>{topic.label}</span>
+                              </label>
+                              <button
+                                type="button"
+                                className="mini-danger"
+                                disabled={saving}
+                                onClick={() => void handleRemoveCustomChecklistItem(phase.code, topic.id)}
+                              >
+                                {saving ? 'Removing...' : 'Remove'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="hint-text">No custom topics yet for this phase.</p>
+                    )}
+                    {shouldTruncateCustom ? (
+                      <button
+                        className="show-more-button"
+                        onClick={() =>
+                          setExpandedChecklistPhases((current) => ({
+                            ...current,
+                            [customExpandKey]: !showAllCustomItems,
+                          }))
+                        }
+                      >
+                        {showAllCustomItems
+                          ? 'Show fewer custom topics'
+                          : `Show more custom topics (${customFilteredTopics.length - displayedCustomTopics.length} more)`}
+                      </button>
+                    ) : null}
                   </div>
+
                   {!phaseFilteredTopics.length ? <p className="hint-text">No checklist topics match your search.</p> : null}
                 </section>
               ) : null}

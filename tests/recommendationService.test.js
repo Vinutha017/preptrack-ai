@@ -28,8 +28,8 @@ describe("buildRecommendations", () => {
 
     const result = await buildRecommendations({ _id: "user-1", streak: 5 });
 
-    expect(result.readinessScore).toBe(90);
-    expect(result.readinessLabel).toBe("Interview ready");
+    expect(result.readinessScore).toBe(75);
+    expect(result.readinessLabel).toBe("Nearly ready");
     expect(result.nextTopics).toHaveLength(3);
     expect(result.nextTopics[0].topic).toBe("Graphs");
     expect(result.suggestions).toContain("Adaptive mode tip: attempt your next test with adaptive=true to focus on weak topics.");
@@ -50,5 +50,16 @@ describe("buildRecommendations", () => {
     expect(result.suggestions).toContain(
       "Build momentum: complete at least one checklist item daily to improve your streak."
     );
+  });
+
+  it("keeps a brand-new account at zero readiness", async () => {
+    getWeakTopics.mockResolvedValue([]);
+    getProgressSummary.mockResolvedValue({ overallPercent: 0, dailyChecklistUpdated: false });
+    getAccuracySnapshot.mockResolvedValue({ overallAccuracy: 0 });
+
+    const result = await buildRecommendations({ _id: "user-3", streak: 0 });
+
+    expect(result.readinessScore).toBe(0);
+    expect(result.readinessLabel).toBe("Needs revision");
   });
 });

@@ -3,19 +3,77 @@ const TestHistory = require("../models/TestHistory");
 const { getWeakTopics } = require("./analyticsService");
 
 const PHASES = ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS"];
-const INTERVIEW_PRIORITY_RATIO = 1;
-const DEFAULT_DIFFICULTY_SPLIT = {
-  easy: 0.4,
-  medium: 0.4,
-  hard: 0.2,
+
+const stripPracticeSetSuffix = (value) =>
+  String(value || "").replace(/\s*\(\s*practice\s*set\s*\d+\s*\)\s*$/i, "");
+
+const normalizeQuestionText = (value) =>
+  stripPracticeSetSuffix(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const questionDedupKey = (question) => {
+  const normalizedText = normalizeQuestionText(question?.question);
+  if (normalizedText) {
+    return `text:${normalizedText}`;
+  }
+
+  return `id:${String(question?._id)}`;
 };
 
-const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
+const filterOutUsedQuestionTexts = (questions, usedQuestionTextSet) => {
+  if (!usedQuestionTextSet?.size) return questions;
+
+  return questions.filter((question) => {
+    const normalizedText = normalizeQuestionText(question?.question);
+    if (!normalizedText) return true;
+    return !usedQuestionTextSet.has(normalizedText);
+  });
+};
+
+const uniqueQuestions = (questions) => {
+  const seen = new Set();
+  return questions.filter((question) => {
+    const key = questionDedupKey(question);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const sampleUniqueQuestions = async ({ match, limit, excludedQuestionTexts = [], sampleSize }) => {
+  const size = Math.max(Number(sampleSize) || limit * 12, limit);
+  const sampled = await Question.aggregate([
+    { $match: match },
+    { $sample: { size } },
+  ]);
+
+  const excludedSet = new Set(excludedQuestionTexts);
+  return uniqueQuestions(filterOutUsedQuestionTexts(sampled, excludedSet)).slice(0, limit);
+};
 
 const getUsedQuestionIds = async (userId, phase) => {
   const filter = phase === "FINAL" ? { userId } : { userId, phase };
   const used = await TestHistory.distinct("questionsUsed", filter);
   return used;
+};
+
+const getUsedQuestionContext = async (userId, phase) => {
+  const usedIds = await getUsedQuestionIds(userId, phase);
+  if (!usedIds.length) {
+    return { usedIds: [], usedQuestionTextSet: new Set() };
+  }
+
+  const usedQuestions = await Question.find({ _id: { $in: usedIds } }).select("question").lean();
+  const usedQuestionTextSet = new Set(
+    usedQuestions
+      .map((question) => normalizeQuestionText(question.question))
+      .filter(Boolean)
+  );
+
+  return { usedIds, usedQuestionTextSet };
 };
 
 const buildQuery = ({ phase, topic, difficulty, usedIds }) => {
@@ -35,50 +93,6 @@ const buildAdaptiveTopicFilter = async (userId) => {
   return weakTopics.map((item) => item.topic);
 };
 
-const prioritizeInterviewQuestions = (questions, limit) => {
-  const favorites = questions
-    .filter((item) => item.isInterviewFavorite)
-    .sort((a, b) => (b.interviewWeight || 1) - (a.interviewWeight || 1));
-
-  const regular = shuffle(questions.filter((item) => !item.isInterviewFavorite));
-  const targetFavorites = Math.ceil(limit * INTERVIEW_PRIORITY_RATIO);
-
-  const selectedFavorites = favorites.slice(0, targetFavorites);
-  const selectedRegular = regular.slice(0, Math.max(0, limit - selectedFavorites.length));
-
-  // If favorites exceed ratio and we still need questions, consume remaining favorites.
-  const remaining = favorites.slice(selectedFavorites.length).slice(0, Math.max(0, limit - selectedFavorites.length - selectedRegular.length));
-
-  return shuffle([...selectedFavorites, ...selectedRegular, ...remaining]).slice(0, limit);
-};
-
-const takeByDifficulty = (questions, limit) => {
-  const buckets = {
-    easy: questions.filter((item) => item.difficulty === "easy"),
-    medium: questions.filter((item) => item.difficulty === "medium"),
-    hard: questions.filter((item) => item.difficulty === "hard"),
-  };
-
-  const targetCounts = {
-    easy: Math.max(1, Math.round(limit * DEFAULT_DIFFICULTY_SPLIT.easy)),
-    medium: Math.max(1, Math.round(limit * DEFAULT_DIFFICULTY_SPLIT.medium)),
-    hard: Math.max(1, limit - Math.max(1, Math.round(limit * DEFAULT_DIFFICULTY_SPLIT.easy)) - Math.max(1, Math.round(limit * DEFAULT_DIFFICULTY_SPLIT.medium))),
-  };
-
-  const selected = [
-    ...prioritizeInterviewQuestions(buckets.easy, targetCounts.easy),
-    ...prioritizeInterviewQuestions(buckets.medium, targetCounts.medium),
-    ...prioritizeInterviewQuestions(buckets.hard, targetCounts.hard),
-  ];
-
-  if (selected.length >= limit) {
-    return shuffle(selected).slice(0, limit);
-  }
-
-  const remainingPool = shuffle(questions.filter((item) => !selected.some((picked) => String(picked._id) === String(item._id))));
-  return shuffle([...selected, ...remainingPool]).slice(0, limit);
-};
-
 const generateQuestions = async ({
   userId,
   phase,
@@ -87,18 +101,23 @@ const generateQuestions = async ({
   limit = 50,
   adaptive = false,
   retakeQuestionIds,
+  excludeQuestionIds,
 }) => {
   const normalizedPhase = phase || "DBMS";
   const normalizedLimit = normalizedPhase === "FINAL" ? 120 : limit;
 
-  const usedIds = retakeQuestionIds?.length ? [] : await getUsedQuestionIds(userId, normalizedPhase);
+  const { usedIds, usedQuestionTextSet } = retakeQuestionIds?.length
+    ? { usedIds: [], usedQuestionTextSet: new Set() }
+    : await getUsedQuestionContext(userId, normalizedPhase);
+  const excludedIds = Array.isArray(excludeQuestionIds) ? excludeQuestionIds : [];
+  const mergedUsedIds = Array.from(new Set([...usedIds.map(String), ...excludedIds.map(String)]));
   const isRetakeFlow = Boolean(retakeQuestionIds?.length);
 
   const query = buildQuery({
     phase: normalizedPhase,
     topic,
     difficulty,
-    usedIds,
+    usedIds: mergedUsedIds,
   });
 
   if (retakeQuestionIds?.length) {
@@ -119,21 +138,58 @@ const generateQuestions = async ({
     }
   }
 
-  let questions = await Question.find(query).limit(normalizedLimit * 3).lean();
+  const excludedQuestionTexts = [...usedQuestionTextSet];
+  let uniqueSelected = await sampleUniqueQuestions({
+    match: query,
+    limit: normalizedLimit,
+    excludedQuestionTexts,
+    sampleSize: normalizedLimit * 12,
+  });
 
-  if (questions.length < normalizedLimit && !isRetakeFlow) {
+  if (uniqueSelected.length < normalizedLimit && !isRetakeFlow) {
     // Relax topic/difficulty filters, but keep non-repetition constraints so users don't get the same questions repeatedly.
     const fallbackQuery = {
-      _id: { $nin: usedIds },
+      _id: { $nin: mergedUsedIds },
       ...(normalizedPhase === "FINAL" ? { phase: { $in: PHASES } } : { phase: normalizedPhase }),
     };
 
-    questions = await Question.find(fallbackQuery).limit(normalizedLimit * 3).lean();
+    const selectedTextSet = new Set(uniqueSelected.map((item) => normalizeQuestionText(item.question)).filter(Boolean));
+    const fallbackExcludedTexts = [...new Set([...excludedQuestionTexts, ...selectedTextSet])];
+    const topUpSample = await sampleUniqueQuestions({
+      match: fallbackQuery,
+      limit: normalizedLimit,
+      excludedQuestionTexts: fallbackExcludedTexts,
+      sampleSize: normalizedLimit * 20,
+    });
+
+    uniqueSelected = uniqueQuestions([...uniqueSelected, ...topUpSample]).slice(0, normalizedLimit);
   }
 
-  const selected = difficulty ? prioritizeInterviewQuestions(questions, normalizedLimit) : takeByDifficulty(questions, normalizedLimit);
+  if (uniqueSelected.length < normalizedLimit && !isRetakeFlow) {
+    // Final fallback: allow previously seen items, but still guarantee uniqueness within this test.
+    const broadQuery = {
+      ...(normalizedPhase === "FINAL" ? { phase: { $in: PHASES } } : { phase: normalizedPhase }),
+    };
 
-  return selected.map((q) => ({
+    const broadSample = await sampleUniqueQuestions({
+      match: broadQuery,
+      limit: normalizedLimit,
+      excludedQuestionTexts: [],
+      sampleSize: normalizedLimit * 30,
+    });
+
+    const selectedTextSet = new Set(uniqueSelected.map((item) => normalizeQuestionText(item.question)).filter(Boolean));
+    const broadUniqueAdditions = broadSample.filter((item) => {
+      const text = normalizeQuestionText(item.question);
+      if (!text || selectedTextSet.has(text)) return false;
+      selectedTextSet.add(text);
+      return true;
+    });
+
+    uniqueSelected = uniqueQuestions([...uniqueSelected, ...broadUniqueAdditions]).slice(0, normalizedLimit);
+  }
+
+  return uniqueSelected.map((q) => ({
     _id: q._id,
     question: q.question,
     options: q.options,

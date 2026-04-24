@@ -1,9 +1,12 @@
 const { getAccuracySnapshot, getProgressSummary, getWeakTopics } = require("./analyticsService");
 
-const calculateReadinessScore = ({ progressPercent, accuracyPercent, streak, dailyChecklistUpdated }) => {
-  const streakBonus = Math.min(streak * 3, 15);
+const calculateReadinessScore = ({ progressPercent, accuracyPercent, dailyChecklistUpdated }) => {
+  if (progressPercent === 0 && accuracyPercent === 0 && !dailyChecklistUpdated) {
+    return 0;
+  }
+
   const checklistBonus = dailyChecklistUpdated ? 5 : 0;
-  const score = Math.round(progressPercent * 0.45 + accuracyPercent * 0.4 + streakBonus + checklistBonus);
+  const score = Math.round(progressPercent * 0.45 + accuracyPercent * 0.4 + checklistBonus);
   return Math.max(0, Math.min(100, score));
 };
 
@@ -17,14 +20,13 @@ const scoreLabel = (score) => {
 const buildRecommendations = async (user) => {
   const [weakTopics, progress, accuracy] = await Promise.all([
     getWeakTopics(user._id, 5),
-    getProgressSummary(user._id),
+    getProgressSummary(user._id, { lastChecklistUpdateAt: user.lastChecklistUpdateAt }),
     getAccuracySnapshot(user._id),
   ]);
 
   const readinessScore = calculateReadinessScore({
     progressPercent: progress.overallPercent,
     accuracyPercent: accuracy.overallAccuracy,
-    streak: user.streak || 0,
     dailyChecklistUpdated: progress.dailyChecklistUpdated,
   });
 

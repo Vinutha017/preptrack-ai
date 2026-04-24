@@ -1,4 +1,4 @@
-function AuthScreen({ projectName, authMode, authForm, setAuthForm, handleAuthSubmit, authLoading, booting, setAuthMode, authMessage }) {
+function AuthScreen({ projectName, authMode, authForm, setAuthForm, handleAuthSubmit, authLoading, booting, setAuthMode }) {
   return (
     <main className="auth-page">
       <section className="auth-card">
@@ -44,11 +44,13 @@ function AuthScreen({ projectName, authMode, authForm, setAuthForm, handleAuthSu
           </button>
         </form>
 
-        <button className="switch-mode" onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
+        <button
+          type="button"
+          className="switch-mode"
+          onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+        >
           {authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Login'}
         </button>
-
-        {authMessage ? <p className="status-text">{authMessage}</p> : null}
       </section>
     </main>
   )

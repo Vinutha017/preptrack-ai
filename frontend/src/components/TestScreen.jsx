@@ -9,9 +9,9 @@ function TestScreen({
   formatTime,
   handleSubmitTest,
   testState,
-  derivedResult,
   retakeState,
   handleRetakeWrongQuestions,
+  openResultModal,
   studySavingId,
   studyMap,
   studyDrafts,
@@ -21,7 +21,6 @@ function TestScreen({
   reviewByQuestionId,
   setStudyDrafts,
   removeStudyItem,
-  studyMessage,
 }) {
   return (
     <main className="test-page">
@@ -54,29 +53,10 @@ function TestScreen({
           </div>
         ) : null}
 
-        {testState.message ? <p className="status-text">{testState.message}</p> : null}
-
-        {derivedResult ? (
-          <section className="result-section">
-            <p className="result-text">
-              Score: {derivedResult.score}/{derivedResult.total} ({derivedResult.accuracy}%)
-            </p>
-
-            <div className="improvement-box">
-              <h3>Sections to improve</h3>
-              {derivedResult.weakAreas.length ? (
-                <ul className="improvement-list">
-                  {derivedResult.weakAreas.slice(0, 3).map((item) => (
-                    <li key={`weak-${item.topic}`}>
-                      {item.topic}: {item.correct}/{item.total} correct ({item.accuracy}%)
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="hint-text">Great work. No weak section found below 60% in this test.</p>
-              )}
-            </div>
-          </section>
+        {testState.result ? (
+          <button className="take-test" onClick={openResultModal}>
+            View detailed result
+          </button>
         ) : null}
 
         {testState.result && retakeState.questionIds.length ? (
@@ -186,7 +166,7 @@ function TestScreen({
               </article>
             ))}
           </div>
-        ) : testState.loading && !testState.message ? (
+        ) : testState.loading ? (
           <p className="hint-text">Preparing your test. If this takes long, go back and start again.</p>
         ) : null}
 
@@ -197,8 +177,6 @@ function TestScreen({
             </button>
           </div>
         ) : null}
-
-        {studyMessage ? <p className="status-text">{studyMessage}</p> : null}
       </section>
     </main>
   )
