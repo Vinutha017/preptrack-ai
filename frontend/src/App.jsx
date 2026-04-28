@@ -2,7 +2,6 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const AuthScreen = lazy(() => import('./components/AuthScreen.jsx'))
-const TestScreen = lazy(() => import('./components/TestScreen.jsx'))
 const DashboardScreen = lazy(() => import('./components/DashboardScreen.jsx'))
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
@@ -16,7 +15,8 @@ const PHASES = [
   { code: 'OS', title: 'Operating Systems' },
   { code: 'CN', title: 'Computer Networks' },
   { code: 'VOCAB', title: 'Technical Vocabulary' },
-  { code: 'OOPS', title: 'Object-Oriented Programming' },
+    { code: 'OOPS', title: 'Object-Oriented Programming' },
+    { code: 'RESUME', title: 'Resume Builder' },
 ]
 
 const ORDERED_PHASES = [...PHASES].sort((a, b) => a.title.localeCompare(b.title))
@@ -201,6 +201,23 @@ const CHECKLIST_TOPICS = {
     { id: 'oops-inline-function', label: 'Inline Function' },
     { id: 'oops-dynamic-binding', label: 'Dynamic Binding' },
     { id: 'oops-message-passing', label: 'Message Passing' },
+  ],
+  RESUME: [
+    { id: 'resume-contact-info', label: 'Clear contact information (phone, email, LinkedIn)' },
+    { id: 'resume-professional-summary', label: 'Concise professional summary / headline' },
+    { id: 'resume-work-experience', label: 'Work experience with company, role, dates' },
+    { id: 'resume-achievements', label: 'Quantified achievements (metrics where possible)' },
+    { id: 'resume-projects', label: 'Relevant projects with short descriptions' },
+    { id: 'resume-education', label: 'Education with degrees and institutions' },
+    { id: 'resume-skills', label: 'Technical skills section (relevant keywords)' },
+    { id: 'resume-keywords', label: 'Role-specific keywords for ATS matching' },
+    { id: 'resume-formatting', label: 'Consistent formatting and readable layout' },
+    { id: 'resume-length', label: 'Appropriate length (1-2 pages)' },
+    { id: 'resume-action-verbs', label: 'Use action verbs (led, implemented, shipped)' },
+    { id: 'resume-metrics', label: 'Use metrics to show impact (%, users, revenue)' },
+    { id: 'resume-customization', label: 'Customize resume for the target role' },
+    { id: 'resume-links', label: 'Working links to portfolio/GitHub/LinkedIn' },
+    { id: 'resume-proofreading', label: 'Proofread (no typos or grammar issues)' },
   ],
 }
 
@@ -1149,40 +1166,6 @@ function App() {
     )
   }
 
-  if (activeView === 'test') {
-    return (
-      <>
-        <Suspense fallback={<p className="hint-text">Loading test screen...</p>}>
-          <TestScreen
-            projectName={PROJECT_NAME}
-            selectedPhase={selectedPhase}
-            goToDashboard={goToDashboard}
-            handleLogout={handleLogout}
-            answeredCount={answeredCount}
-            generatedTest={generatedTest}
-            testTimer={testTimer}
-            formatTime={formatTime}
-            handleSubmitTest={handleSubmitTest}
-            testState={testState}
-            retakeState={retakeState}
-            handleRetakeWrongQuestions={handleRetakeWrongQuestions}
-            openResultModal={() => setResultModalOpen(true)}
-            studySavingId={studySavingId}
-            studyMap={studyMap}
-            studyDrafts={studyDrafts}
-            upsertStudyItem={upsertStudyItem}
-            answers={answers}
-            setAnswers={setAnswers}
-            reviewByQuestionId={reviewByQuestionId}
-            setStudyDrafts={setStudyDrafts}
-            removeStudyItem={removeStudyItem}
-          />
-        </Suspense>
-        {overlays}
-      </>
-    )
-  }
-
   return (
     <>
       <Suspense fallback={<p className="hint-text">Loading dashboard...</p>}>
@@ -1199,11 +1182,9 @@ function App() {
           studyItems={studyItems}
           orderedPhases={ORDERED_PHASES}
           getPhaseProgress={getPhaseProgress}
-          isPhaseTestUnlocked={isPhaseTestUnlocked}
           selectedPhase={selectedPhase}
           setChecklistQuery={setChecklistQuery}
           setSelectedPhase={setSelectedPhase}
-          handleTakeTest={handleTakeTest}
           checklistTopics={CHECKLIST_TOPICS}
           phaseDetailsMap={phaseDetailsMap}
           checklistQuery={checklistQuery}

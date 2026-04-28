@@ -2,7 +2,7 @@ const Question = require("../models/Question");
 const TestHistory = require("../models/TestHistory");
 const { getWeakTopics } = require("./analyticsService");
 
-const PHASES = ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS"];
+const PHASES = ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME"];
 
 const stripPracticeSetSuffix = (value) =>
   String(value || "").replace(/\s*\(\s*practice\s*set\s*\d+\s*\)\s*$/i, "");

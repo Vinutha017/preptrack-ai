@@ -17,7 +17,7 @@ const studyItemSchema = new mongoose.Schema(
     phase: {
       type: String,
       required: true,
-      enum: ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "FINAL"],
+      enum: ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME", "FINAL"],
       index: true,
     },
     topic: {

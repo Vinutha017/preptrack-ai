@@ -8,6 +8,7 @@ const DEFAULT_PHASE_TOTALS = {
   CN: 42,
   VOCAB: 16,
   OOPS: 22,
+  RESUME: 15,
 };
 
 const getTotalItemsForPhase = (phase, customItems = []) => {

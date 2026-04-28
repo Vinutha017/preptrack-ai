@@ -12,7 +12,7 @@ router.use(auth);
 router.post(
   "/generate",
   [
-    body("phase").optional().isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "FINAL"]),
+    body("phase").optional().isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME", "FINAL"]),
     body("limit").optional().isInt({ min: 1, max: 120 }),
     body("adaptive").optional().isBoolean(),
     body("retakeQuestionIds").optional().isArray(),
@@ -25,7 +25,7 @@ router.post(
 router.post(
   "/submit",
   [
-    body("phase").optional().isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "FINAL"]),
+    body("phase").optional().isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME", "FINAL"]),
     body("questionIds").isArray({ min: 1 }),
     body("questionIds.*").isMongoId().withMessage("questionIds must contain valid IDs"),
     body("answers").isArray({ min: 1 }),

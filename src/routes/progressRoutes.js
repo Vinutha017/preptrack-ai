@@ -25,7 +25,7 @@ router.post("/reset", resetProgress);
 router.patch(
   "/:phase/item",
   [
-    param("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS"]),
+    param("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME"]),
     body("itemId").notEmpty().withMessage("itemId is required"),
     body("completed").isBoolean().withMessage("completed must be true/false"),
   ],
@@ -36,7 +36,7 @@ router.patch(
 router.post(
   "/:phase/custom-item",
   [
-    param("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS"]),
+    param("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME"]),
     body("label")
       .isString()
       .trim()
@@ -50,7 +50,7 @@ router.post(
 router.delete(
   "/:phase/custom-item/:itemId",
   [
-    param("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS"]),
+    param("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME"]),
     param("itemId").isString().trim().notEmpty().withMessage("itemId is required"),
   ],
   validate,

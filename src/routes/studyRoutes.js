@@ -12,7 +12,7 @@ router.use(auth);
 router.get(
 	"/",
 	[
-		query("phase").optional().isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "FINAL"]),
+		query("phase").optional().isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME", "FINAL"]),
 		query("questionIds").optional().isString(),
 	],
 	validate,
@@ -23,7 +23,7 @@ router.post(
 	"/",
 	[
 		body("questionId").isMongoId().withMessage("questionId must be a valid ID"),
-		body("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "FINAL"]),
+		body("phase").isIn(["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME", "FINAL"]),
 		body("topic").isString().trim().notEmpty().withMessage("topic is required"),
 		body("bookmarked").optional().isBoolean(),
 		body("note").optional().isString().isLength({ max: 1000 }).withMessage("note must be at most 1000 characters"),

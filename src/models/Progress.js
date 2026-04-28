@@ -11,7 +11,7 @@ const progressSchema = new mongoose.Schema(
     phase: {
       type: String,
       required: true,
-      enum: ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS"],
+      enum: ["DSA", "DBMS", "OS", "CN", "VOCAB", "OOPS", "RESUME"],
     },
     completedItems: {
       type: [String],

@@ -16,11 +16,9 @@ function DashboardScreen({
   studyItems,
   orderedPhases,
   getPhaseProgress,
-  isPhaseTestUnlocked,
   selectedPhase,
   setChecklistQuery,
   setSelectedPhase,
-  handleTakeTest,
   checklistTopics,
   phaseDetailsMap,
   checklistQuery,
@@ -127,7 +125,7 @@ function DashboardScreen({
             ) : null}
           </>
         ) : (
-          <p className="hint-text">Bookmark a question or add a note during a test to save it here.</p>
+          <p className="hint-text">Bookmark important items and notes to save them here.</p>
         )}
       </section>
 
@@ -152,7 +150,6 @@ function DashboardScreen({
       <section className="phase-grid">
         {visiblePhases.map((phase) => {
           const phaseProgress = getPhaseProgress(phase.code)
-          const canTakeTest = isPhaseTestUnlocked(phase.code)
           const isOpen = selectedPhase === phase.code
           const baseTopics = checklistTopics[phase.code] ?? []
           const customTopics = (phaseDetailsMap.get(phase.code)?.customItems ?? []).map((item) => ({
@@ -179,12 +176,18 @@ function DashboardScreen({
             <article key={phase.code} className={`phase-card ${isOpen ? 'active' : ''}`}>
               <h2>{phase.code}</h2>
               <p>{phase.title}</p>
-              <p className="progress-text">
-                {phaseProgress ? `${phaseProgress.completed}/${phaseProgress.total} completed` : 'No progress yet'}
-              </p>
-              <p className="phase-percent">
-                {phaseProgress ? `${phaseProgress.percent}% complete` : '0% complete'}
-              </p>
+              {phase.code !== 'RESUME' ? (
+                <>
+                  <p className="progress-text">
+                    {phaseProgress ? `${phaseProgress.completed}/${phaseProgress.total} completed` : 'No progress yet'}
+                  </p>
+                  <p className="phase-percent">
+                    {phaseProgress ? `${phaseProgress.percent}% complete` : '0% complete'}
+                  </p>
+                </>
+              ) : (
+                <p className="progress-text">{phaseTopics.length} points</p>
+              )}
               <div className="phase-actions">
                 <button
                   onClick={() => {
@@ -192,22 +195,20 @@ function DashboardScreen({
                     setSelectedPhase((current) => (current === phase.code ? '' : phase.code))
                   }}
                 >
-                  {isOpen ? 'Close checklist' : 'Open checklist'}
-                </button>
-                <button className="take-test" onClick={() => handleTakeTest(phase.code)} disabled={!canTakeTest}>
-                  Open test screen
+                  {isOpen ? 'Close points' : 'Open points'}
                 </button>
               </div>
-              {!canTakeTest ? <p className="hint-text">Finish all checklist topics to unlock this test.</p> : null}
 
               {isOpen ? (
                 <section className="phase-checklist-section">
                   <div className="checklist-head">
                     <div>
-                      <h3>{phase.code} checklist</h3>
-                      <p className="progress-text">
-                        {phaseProgress?.completed ?? 0}/{phaseProgress?.total ?? phaseTopics.length} completed ({phaseProgress?.percent ?? 0}%)
-                      </p>
+                      <h3>{phase.code} points</h3>
+                      {phase.code !== 'RESUME' ? (
+                        <p className="progress-text">
+                          {phaseProgress?.completed ?? 0}/{phaseProgress?.total ?? phaseTopics.length} completed ({phaseProgress?.percent ?? 0}%)
+                        </p>
+                      ) : null}
                     </div>
                     <label className="checklist-search">
                       <span>Search topics</span>
@@ -220,29 +221,31 @@ function DashboardScreen({
                     </label>
                   </div>
 
-                  <div className="custom-checklist-add">
-                    <label>
-                      <span>Add your own checklist topic</span>
-                      <input
-                        type="text"
-                        value={customChecklistDrafts[phase.code] ?? ''}
-                        onChange={(event) =>
-                          setCustomChecklistDrafts((current) => ({
-                            ...current,
-                            [phase.code]: event.target.value,
-                          }))
-                        }
-                        placeholder="Example: OS IPC interview notes"
-                      />
-                    </label>
-                    <button
-                      className="take-test"
-                      onClick={() => void handleAddCustomChecklistItem(phase.code)}
-                      disabled={customChecklistSavingPhase === phase.code}
-                    >
-                      {customChecklistSavingPhase === phase.code ? 'Adding...' : 'Add topic'}
-                    </button>
-                  </div>
+                  {phase.code !== 'RESUME' ? (
+                    <div className="custom-checklist-add">
+                      <label>
+                        <span>Add your own checklist topic</span>
+                        <input
+                          type="text"
+                          value={customChecklistDrafts[phase.code] ?? ''}
+                          onChange={(event) =>
+                            setCustomChecklistDrafts((current) => ({
+                              ...current,
+                              [phase.code]: event.target.value,
+                            }))
+                          }
+                          placeholder="Example: OS IPC interview notes"
+                        />
+                      </label>
+                      <button
+                        className="take-test"
+                        onClick={() => void handleAddCustomChecklistItem(phase.code)}
+                        disabled={customChecklistSavingPhase === phase.code}
+                      >
+                        {customChecklistSavingPhase === phase.code ? 'Adding...' : 'Add topic'}
+                      </button>
+                    </div>
+                  ) : null}
 
                   <div
                     className="phase-progress-bar"
@@ -255,13 +258,34 @@ function DashboardScreen({
                     <span style={{ width: `${Math.max(0, Math.min(100, Number(phaseProgress?.percent) || 0))}%` }} />
                   </div>
 
-                  <p className="progress-text">Showing {displayedChecklistItems.length} of {phaseTopics.length} topics</p>
+                  {phase.code !== 'RESUME' ? (
+                    <p className="progress-text">Showing {displayedChecklistItems.length} of {phaseTopics.length} topics</p>
+                  ) : null}
+
+                  {phase.code === 'RESUME' ? (
+                    <div className="resume-section">
+                      <h4>Resume points</h4>
+                      <ul>
+                        {baseTopics.map((item) => (
+                          <li key={item.id}>{item.label}</li>
+                        ))}
+                      </ul>
+
+                      <p className="hint-text">
+                        Need an external checker?{' '}
+                        <a href="https://www.jobscan.co/resume-scanner" target="_blank" rel="noreferrer">
+                          Open Resume ATS checker
+                        </a>
+                      </p>
+
+                    </div>
+                  ) : null}
 
                   {phase.code === 'DSA' ? (
                     <DsaPracticePanel baseTopics={baseTopics} dsaPracticeLinks={dsaPracticeLinks} />
                   ) : null}
 
-                  {displayedCoreTopics.length ? (
+                  {phase.code !== 'RESUME' && displayedCoreTopics.length ? (
                     <div className="checklist-section-group">
                       <div className="checklist-group-head">
                         <h4>Core checklist</h4>
@@ -304,60 +328,62 @@ function DashboardScreen({
                     </div>
                   ) : null}
 
-                  <div className="checklist-section-group">
-                    <div className="checklist-group-head">
-                      <h4>Custom checklist</h4>
-                      <span>{displayedCustomTopics.length}/{customFilteredTopics.length}</span>
-                    </div>
-                    {displayedCustomTopics.length ? (
-                      <div className="checklist-grid">
-                        {displayedCustomTopics.map((topic) => {
-                          const checked = completedSet.has(topic.id)
-                          const saving = checklistSavingKey === `${phase.code}:${topic.id}`
-
-                          return (
-                            <div className={`check-item ${checked ? 'checked' : ''}`} key={topic.id}>
-                              <label className="check-item-main">
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
-                                />
-                                <span>{topic.label}</span>
-                              </label>
-                              <button
-                                type="button"
-                                className="mini-danger"
-                                disabled={saving}
-                                onClick={() => void handleRemoveCustomChecklistItem(phase.code, topic.id)}
-                              >
-                                {saving ? 'Removing...' : 'Remove'}
-                              </button>
-                            </div>
-                          )
-                        })}
+                  {phase.code !== 'RESUME' ? (
+                    <div className="checklist-section-group">
+                      <div className="checklist-group-head">
+                        <h4>Custom checklist</h4>
+                        <span>{displayedCustomTopics.length}/{customFilteredTopics.length}</span>
                       </div>
-                    ) : (
-                      <p className="hint-text">No custom topics yet for this phase.</p>
-                    )}
-                    {shouldTruncateCustom ? (
-                      <button
-                        className="show-more-button"
-                        onClick={() =>
-                          setExpandedChecklistPhases((current) => ({
-                            ...current,
-                            [customExpandKey]: !showAllCustomItems,
-                          }))
-                        }
-                      >
-                        {showAllCustomItems
-                          ? 'Show fewer custom topics'
-                          : `Show more custom topics (${customFilteredTopics.length - displayedCustomTopics.length} more)`}
-                      </button>
-                    ) : null}
-                  </div>
+                      {displayedCustomTopics.length ? (
+                        <div className="checklist-grid">
+                          {displayedCustomTopics.map((topic) => {
+                            const checked = completedSet.has(topic.id)
+                            const saving = checklistSavingKey === `${phase.code}:${topic.id}`
 
-                  {!phaseFilteredTopics.length ? <p className="hint-text">No checklist topics match your search.</p> : null}
+                            return (
+                              <div className={`check-item ${checked ? 'checked' : ''}`} key={topic.id}>
+                                <label className="check-item-main">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
+                                  />
+                                  <span>{topic.label}</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  className="mini-danger"
+                                  disabled={saving}
+                                  onClick={() => void handleRemoveCustomChecklistItem(phase.code, topic.id)}
+                                >
+                                  {saving ? 'Removing...' : 'Remove'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="hint-text">No custom topics yet for this phase.</p>
+                      )}
+                      {shouldTruncateCustom ? (
+                        <button
+                          className="show-more-button"
+                          onClick={() =>
+                            setExpandedChecklistPhases((current) => ({
+                              ...current,
+                              [customExpandKey]: !showAllCustomItems,
+                            }))
+                          }
+                        >
+                          {showAllCustomItems
+                            ? 'Show fewer custom topics'
+                            : `Show more custom topics (${customFilteredTopics.length - displayedCustomTopics.length} more)`}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {phase.code !== 'RESUME' && !phaseFilteredTopics.length ? <p className="hint-text">No points match your search.</p> : null}
                 </section>
               ) : null}
             </article>
