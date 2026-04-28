@@ -297,6 +297,7 @@ function App() {
   const [showAllWeakAreas, setShowAllWeakAreas] = useState(false)
   const toastIdRef = useRef(0)
   const toastTimeoutsRef = useRef(new Map())
+  const shouldBootstrapRef = useRef(Boolean(token))
 
   const signedIn = Boolean(token && user)
   const overallPercent = progress?.overallPercent ?? 0
@@ -553,6 +554,60 @@ function App() {
     setStudyItems(data.items ?? [])
   }
 
+  const applyProgressResponse = (phase, response = {}) => {
+    setProgress((current) => {
+      if (!current) return current
+
+      const phaseWise = [...(current.phaseWise ?? [])]
+      const phaseDetails = [...(current.phaseDetails ?? [])]
+      const detailIndex = phaseDetails.findIndex((item) => item.phase === phase)
+      if (detailIndex === -1) return current
+
+      const currentDetail = phaseDetails[detailIndex]
+      const nextDetail = {
+        ...currentDetail,
+        completedItems: Array.isArray(response.completedItems)
+          ? [...response.completedItems]
+          : [...(currentDetail.completedItems ?? [])],
+        customItems: Array.isArray(response.customItems)
+          ? [...response.customItems]
+          : [...(currentDetail.customItems ?? [])],
+        totalItems: Number(response.totalItems ?? currentDetail.totalItems ?? 0),
+      }
+
+      phaseDetails[detailIndex] = nextDetail
+
+      const phaseIndex = phaseWise.findIndex((item) => item.phase === phase)
+      if (phaseIndex !== -1) {
+        const nextPhase = { ...phaseWise[phaseIndex] }
+        nextPhase.completed = nextDetail.completedItems.length
+        nextPhase.total = nextDetail.totalItems
+        nextPhase.percent = nextPhase.total
+          ? Number(((nextPhase.completed / nextPhase.total) * 100).toFixed(2))
+          : 0
+        nextPhase.isComplete = nextPhase.total > 0 && nextPhase.completed >= nextPhase.total
+        phaseWise[phaseIndex] = nextPhase
+      }
+
+      const totalCompleted = phaseWise.reduce((sum, item) => sum + Number(item.completed ?? 0), 0)
+      const totalItems = phaseWise.reduce((sum, item) => sum + Number(item.total ?? 0), 0)
+
+      return {
+        ...current,
+        phaseWise,
+        phaseDetails,
+        totalCompleted,
+        totalItems,
+        overallPercent:
+          typeof response.overallPercent === 'number'
+            ? response.overallPercent
+            : totalItems
+              ? Number(((totalCompleted / totalItems) * 100).toFixed(2))
+              : 0,
+      }
+    })
+  }
+
   const upsertStudyItem = async ({ questionId, phase, topic, bookmarked, note }) => {
     if (!token) return
 
@@ -603,6 +658,10 @@ function App() {
       return
     }
 
+    if (!shouldBootstrapRef.current) {
+      return
+    }
+
     let active = true
     const bootstrap = async () => {
       try {
@@ -637,10 +696,14 @@ function App() {
       if (authMode === 'register') payload.name = authForm.name
 
       const data = await request(endpoint, { method: 'POST', body: payload })
+      shouldBootstrapRef.current = false
       localStorage.setItem(TOKEN_KEY, data.token)
       setToken(data.token)
-      await loadProfile(data.token)
-      await loadStudyItems(data.token)
+      setUser(data.user ?? null)
+      setProgress(null)
+      setAnalytics(null)
+      setStudyItems([])
+      void Promise.allSettled([loadProfile(data.token), loadStudyItems(data.token)])
       setAuthMessage(authMode === 'register' ? 'Account created successfully.' : 'Logged in successfully.')
     } catch (error) {
       setAuthMessage(error.message)
@@ -688,64 +751,25 @@ function App() {
     if (!token) return
     const key = `${phase}:${itemId}`
     setChecklistSavingKey(key)
+    const detail = phaseDetailsMap.get(phase)
+    const previousCompletedItems = [...(detail?.completedItems ?? [])]
+    const nextCompletedItems = new Set(previousCompletedItems)
+    if (completed) nextCompletedItems.add(itemId)
+    else nextCompletedItems.delete(itemId)
 
-    const applyOptimisticProgress = (targetCompleted) => {
-      setProgress((current) => {
-        if (!current) return current
-
-        const next = {
-          ...current,
-          phaseWise: [...(current.phaseWise ?? [])],
-          phaseDetails: [...(current.phaseDetails ?? [])],
-        }
-
-        const detailIndex = next.phaseDetails.findIndex((item) => item.phase === phase)
-        if (detailIndex === -1) return current
-
-        const detail = { ...next.phaseDetails[detailIndex] }
-        const completedItems = new Set(detail.completedItems ?? [])
-        if (targetCompleted) completedItems.add(itemId)
-        else completedItems.delete(itemId)
-        detail.completedItems = [...completedItems]
-        next.phaseDetails[detailIndex] = detail
-
-        const phaseIndex = next.phaseWise.findIndex((item) => item.phase === phase)
-        if (phaseIndex !== -1) {
-          const phaseItem = { ...next.phaseWise[phaseIndex] }
-          phaseItem.completed = detail.completedItems.length
-          phaseItem.total = Number(phaseItem.total ?? detail.totalItems ?? 0)
-          phaseItem.percent = phaseItem.total ? Number(((phaseItem.completed / phaseItem.total) * 100).toFixed(2)) : 0
-          phaseItem.isComplete = phaseItem.total > 0 && phaseItem.completed >= phaseItem.total
-          next.phaseWise[phaseIndex] = phaseItem
-        }
-
-        const totalCompleted = next.phaseWise.reduce((sum, item) => sum + Number(item.completed ?? 0), 0)
-        const totalItems = next.phaseWise.reduce((sum, item) => sum + Number(item.total ?? 0), 0)
-
-        next.totalCompleted = totalCompleted
-        next.totalItems = totalItems
-        next.overallPercent = totalItems ? Number(((totalCompleted / totalItems) * 100).toFixed(2)) : 0
-
-        return next
-      })
-    }
-
-    applyOptimisticProgress(completed)
+    applyProgressResponse(phase, { completedItems: [...nextCompletedItems] })
 
     try {
-      await Promise.all([
-        request(`/progress/${phase}/item`, {
-          method: 'PATCH',
-          token,
-          body: { itemId, completed },
-        }),
-        request('/progress/daily-checkin', { method: 'POST', token }),
-      ])
+      const response = await request(`/progress/${phase}/item`, {
+        method: 'PATCH',
+        token,
+        body: { itemId, completed },
+      })
 
-      const refreshedProgress = await request('/progress', { token })
-      setProgress(refreshedProgress)
+      applyProgressResponse(phase, response)
+      void request('/progress/daily-checkin', { method: 'POST', token })
     } catch (error) {
-      applyOptimisticProgress(!completed)
+      applyProgressResponse(phase, { completedItems: previousCompletedItems })
       setTestState((current) => ({ ...current, message: error.message }))
     } finally {
       setChecklistSavingKey('')
@@ -796,13 +820,13 @@ function App() {
     setDashboardMessage('')
 
     try {
-      await request(`/progress/${phase}/custom-item`, {
+      const response = await request(`/progress/${phase}/custom-item`, {
         method: 'POST',
         token,
         body: { label },
       })
-      await request('/progress/daily-checkin', { method: 'POST', token })
-      await loadProfile(token)
+      applyProgressResponse(phase, response)
+      void request('/progress/daily-checkin', { method: 'POST', token })
       setCustomChecklistDrafts((current) => ({ ...current, [phase]: '' }))
       setDashboardMessage(`Added custom checklist topic to ${phase}.`)
     } catch (error) {
@@ -820,12 +844,12 @@ function App() {
     setDashboardMessage('')
 
     try {
-      await request(`/progress/${phase}/custom-item/${itemId}`, {
+      const response = await request(`/progress/${phase}/custom-item/${itemId}`, {
         method: 'DELETE',
         token,
       })
-      await request('/progress/daily-checkin', { method: 'POST', token })
-      await loadProfile(token)
+      applyProgressResponse(phase, response)
+      void request('/progress/daily-checkin', { method: 'POST', token })
       setDashboardMessage('Removed custom checklist topic.')
     } catch (error) {
       setDashboardMessage(error.message)

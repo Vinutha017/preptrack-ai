@@ -278,7 +278,6 @@ function DashboardScreen({
                                 <input
                                   type="checkbox"
                                   checked={checked}
-                                  disabled={saving}
                                   onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
                                 />
                                 <span>{topic.label}</span>
@@ -322,7 +321,6 @@ function DashboardScreen({
                                 <input
                                   type="checkbox"
                                   checked={checked}
-                                  disabled={saving}
                                   onChange={(event) => handleChecklistToggle(phase.code, topic.id, event.target.checked)}
                                 />
                                 <span>{topic.label}</span>
