@@ -11,6 +11,11 @@ const DEFAULT_PHASE_TOTALS = {
   RESUME: 15,
 };
 
+const stampChecklistUpdate = async (user) => {
+  user.lastChecklistUpdateAt = new Date();
+  await user.save();
+};
+
 const getTotalItemsForPhase = (phase, customItems = []) => {
   const baseTotal = DEFAULT_PHASE_TOTALS[phase] || 0;
   return baseTotal + customItems.length;
@@ -106,6 +111,8 @@ const toggleProgressItem = async (req, res, next) => {
     const phasePercent = calculateProgressPercent(progress.completedItems.length, progress.totalItems);
     const overall = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
 
+    await stampChecklistUpdate(req.user);
+
     return res.json({
       phase,
       completedItems: progress.completedItems,
@@ -147,6 +154,8 @@ const addCustomChecklistItem = async (req, res, next) => {
     const overall = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
     const phasePercent = calculateProgressPercent(progress.completedItems.length, progress.totalItems);
 
+    await stampChecklistUpdate(req.user);
+
     return res.status(201).json({
       phase,
       item: { itemId, label },
@@ -185,6 +194,8 @@ const removeCustomChecklistItem = async (req, res, next) => {
     const overall = await getProgressSummary(req.user._id, { lastChecklistUpdateAt: req.user.lastChecklistUpdateAt });
     const phasePercent = calculateProgressPercent(progress.completedItems.length, progress.totalItems);
 
+    await stampChecklistUpdate(req.user);
+
     return res.json({
       phase,
       removedItemId: itemId,
@@ -213,8 +224,7 @@ const getOverallProgress = async (req, res, next) => {
 
 const markDailyChecklistUpdate = async (req, res, next) => {
   try {
-    req.user.lastChecklistUpdateAt = new Date();
-    await req.user.save();
+    await stampChecklistUpdate(req.user);
 
     return res.json({
       message: "Checklist updated for today",

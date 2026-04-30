@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
 import DsaPracticePanel from './DsaPracticePanel.jsx'
+import ProjectLogo from './ProjectLogo.jsx'
 
 const AnalyticsCharts = lazy(() => import('./AnalyticsCharts.jsx'))
 
@@ -48,7 +49,8 @@ function DashboardScreen({
   return (
     <main className="dashboard-page">
       <header className="dashboard-header">
-        <div>
+        <div className="page-brand-block">
+          <ProjectLogo compact />
           <p className="project-tag">Welcome to {projectName}</p>
           <h1>Hello {user?.name}, choose your phase</h1>
         </div>

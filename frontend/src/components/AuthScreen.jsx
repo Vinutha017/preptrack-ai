@@ -1,7 +1,10 @@
+import ProjectLogo from './ProjectLogo.jsx'
+
 function AuthScreen({ projectName, authMode, authForm, setAuthForm, handleAuthSubmit, authLoading, booting, setAuthMode }) {
   return (
     <main className="auth-page">
       <section className="auth-card">
+        <ProjectLogo compact />
         <p className="project-tag">Welcome to {projectName}</p>
         <h1>{authMode === 'login' ? 'Login' : 'Sign up'}</h1>
         <p className="hint-text">Sign in first, then choose one of 6 phases to update checklist and take tests.</p>

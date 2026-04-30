@@ -1,3 +1,5 @@
+import ProjectLogo from './ProjectLogo.jsx'
+
 function TestScreen({
   projectName,
   selectedPhase,
@@ -26,7 +28,8 @@ function TestScreen({
     <main className="test-page">
       <header className="test-topbar">
         <button className="back-button" onClick={goToDashboard}>Back to dashboard</button>
-        <div>
+        <div className="page-brand-block">
+          <ProjectLogo compact />
           <p className="project-tag">{projectName}</p>
           <h1>{selectedPhase} Test</h1>
         </div>

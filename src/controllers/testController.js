@@ -1,6 +1,6 @@
 const TestHistory = require("../models/TestHistory");
 const { generateQuestions, evaluateTestSubmission } = require("../services/testEngineService");
-const { getProgressSummary, isToday } = require("../services/analyticsService");
+const { getProgressSummary } = require("../services/analyticsService");
 
 const stripPracticeSetSuffix = (value) =>
   String(value || "").replace(/\s*\(\s*practice\s*set\s*\d+\s*\)\s*$/i, "");
@@ -36,7 +36,7 @@ const generateTest = async (req, res, next) => {
       }
     }
 
-    if (!isToday(req.user.lastChecklistUpdateAt)) {
+    if (!progressSummary.dailyChecklistUpdated) {
       return res.status(403).json({
         message: "Update your checklist for today before generating tests.",
       });

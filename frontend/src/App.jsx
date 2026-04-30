@@ -1,5 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import ProjectLogo from './components/ProjectLogo.jsx'
+import ThreeSplash from './components/ThreeSplash.jsx'
 
 const AuthScreen = lazy(() => import('./components/AuthScreen.jsx'))
 const DashboardScreen = lazy(() => import('./components/DashboardScreen.jsx'))
@@ -302,6 +304,7 @@ function App() {
   const [resettingProgress, setResettingProgress] = useState(false)
   const [dashboardMessage, setDashboardMessage] = useState('')
   const [activeView, setActiveView] = useState('dashboard')
+  const [showAuthIntro, setShowAuthIntro] = useState(true)
 
   const [generatedTest, setGeneratedTest] = useState([])
   const [answers, setAnswers] = useState({})
@@ -444,6 +447,22 @@ function App() {
     if (!signedIn && !booting) {
       resetAuthForm()
     }
+  }, [signedIn, booting])
+
+  useEffect(() => {
+    if (signedIn) {
+      setShowAuthIntro(false)
+      return undefined
+    }
+
+    if (booting) return undefined
+
+    setShowAuthIntro(true)
+    const introTimer = window.setTimeout(() => {
+      setShowAuthIntro(false)
+    }, 3000)
+
+    return () => window.clearTimeout(introTimer)
   }, [signedIn, booting])
 
   useEffect(() => {
@@ -721,6 +740,7 @@ function App() {
       setProgress(null)
       setAnalytics(null)
       setStudyItems([])
+      setShowAuthIntro(false)
       void Promise.allSettled([loadProfile(data.token), loadStudyItems(data.token)])
       setAuthMessage(authMode === 'register' ? 'Account created successfully.' : 'Logged in successfully.')
     } catch (error) {
@@ -754,6 +774,7 @@ function App() {
     setDashboardMessage('')
     setAuthMode('login')
     resetAuthForm()
+    setShowAuthIntro(false)
     setChecklistQuery('')
     setChecklistSavingKey('')
     setCustomChecklistDrafts({})
@@ -1148,6 +1169,21 @@ function App() {
   }
 
   if (!signedIn) {
+    if (showAuthIntro) {
+      return (
+        <>
+          <main className="auth-intro-page">
+            <section className="auth-intro-card">
+              <ProjectLogo />
+              <ThreeSplash projectName={PROJECT_NAME} />
+              <p className="intro-loading-text">Loading login screen...</p>
+            </section>
+          </main>
+          {overlays}
+        </>
+      )
+    }
+
     return (
       <>
         <Suspense fallback={<p className="hint-text">Loading sign-in screen...</p>}>
