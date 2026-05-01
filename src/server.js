@@ -59,8 +59,7 @@ const ensureQuestionSeedData = async () => {
 (async () => {
   ensureFrontendBuild();
   await connectDB();
-  // Auto-seed disabled; use /api/admin/seed-once endpoint instead to avoid conflicts.
-  // await ensureQuestionSeedData();
+  await ensureQuestionSeedData();
 
   app.listen(env.port, () => {
     console.log(`Server running on port ${env.port}`);
