@@ -28,6 +28,15 @@ body {
   min-width: 320px;
   min-height: 100vh;
   color: #24344d;
+  padding: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) 
+            max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
 }
 
 body,
@@ -35,6 +44,29 @@ button,
 input,
 select {
   font-family: inherit;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile touch devices */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  input {
+    font-size: 16px;
+    /* Prevents zoom on iOS when input is focused */
+    min-height: 48px;
+  }
+
+  select {
+    min-height: 48px;
+    font-size: 16px;
+  }
 }
 
 button,

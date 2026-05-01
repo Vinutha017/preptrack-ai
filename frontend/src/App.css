@@ -13,6 +13,10 @@
   --danger-2: #da5c6c;
   --shadow-soft: 0 14px 38px rgba(15, 23, 42, 0.1);
   --shadow-lift: 0 20px 44px rgba(30, 64, 175, 0.16);
+  --safe-top: max(12px, env(safe-area-inset-top));
+  --safe-right: max(12px, env(safe-area-inset-right));
+  --safe-bottom: max(12px, env(safe-area-inset-bottom));
+  --safe-left: max(12px, env(safe-area-inset-left));
 }
 
 /* 3D splash styles for auth screen */
@@ -1087,6 +1091,7 @@ button:disabled {
   box-shadow: none;
 }
 
+/* Tablet and below */
 @media (max-width: 980px) {
   .checklist-grid {
     grid-template-columns: 1fr;
@@ -1097,10 +1102,320 @@ button:disabled {
   }
 }
 
+/* Mobile Landscape and Tablets */
+@media (max-width: 768px) {
+  body {
+    background:
+      radial-gradient(circle at 8% 2%, rgba(37, 99, 235, 0.15), transparent 40%),
+      radial-gradient(circle at 92% 7%, rgba(20, 184, 166, 0.15), transparent 40%),
+      linear-gradient(180deg, #f5f8ff 0%, #edf3ff 52%, #f8fbff 100%);
+  }
+
+  .auth-page,
+  .dashboard-page,
+  .test-page {
+    margin: 16px auto;
+    width: calc(100% - 16px);
+    gap: 16px;
+  }
+
+  .auth-intro-page {
+    margin: 16px auto;
+    width: calc(100% - 16px);
+    min-height: calc(100vh - 32px);
+  }
+
+  .auth-intro-card {
+    padding: 24px 18px 20px;
+    border-radius: 24px;
+  }
+
+  .auth-card,
+  .dashboard-header,
+  .test-topbar,
+  .overall-progress-card,
+  .phase-card,
+  .checklist-section,
+  .test-section,
+  .question-card,
+  .ai-summary-card,
+  .analytics-card,
+  .saved-study-card {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .auth-card {
+    width: min(100%, 420px);
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  .phase-grid {
+    gap: 14px;
+  }
+
+  input,
+  button {
+    padding: 0.85rem 0.95rem;
+    font-size: 1rem;
+    min-height: 48px;
+  }
+
+  input {
+    border-radius: 12px;
+  }
+
+  button {
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
+
+  .phase-tab {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+  }
+
+  .check-item,
+  .option-list label {
+    padding: 12px 13px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+  }
+
+  .ai-score,
+  .overall-percent {
+    font-size: 1.75rem;
+  }
+
+  .analytics-card {
+    padding: 16px;
+  }
+
+  .chart-shell {
+    min-height: 220px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 380px) {
+  :root {
+    font-size: 14px;
+  }
+
+  .auth-page,
+  .dashboard-page,
+  .test-page {
+    margin: 10px auto;
+    width: calc(100% - 10px);
+    gap: 10px;
+  }
+
+  .auth-intro-page {
+    margin: 10px auto;
+  }
+
+  .auth-card,
+  .dashboard-header,
+  .test-topbar,
+  .overall-progress-card,
+  .phase-card,
+  .checklist-section,
+  .test-section,
+  .question-card,
+  .ai-summary-card,
+  .analytics-card,
+  .saved-study-card {
+    padding: 14px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+  }
+
+  button,
+  input {
+    font-size: 0.95rem;
+    min-height: 44px;
+  }
+
+  .phase-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .overall-percent,
+  .ai-score {
+    font-size: 1.3rem;
+  }
+
+  .checklist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .check-item,
+  .option-list label {
+    padding: 10px 11px;
+    min-height: 40px;
+    font-size: 0.85rem;
+  }
+
+  .toast-stack {
+    width: min(85vw, 270px);
+  }
+
+  .modal-actions button {
+    min-height: 40px;
+  }
+}
+
+/* Standard mobile phones and small tablets */
 @media (max-width: 640px) {
+  :root {
+    font-size: 15px;
+  }
+
+  html {
+    scroll-padding-top: 12px;
+  }
+
+  .auth-page,
+  .dashboard-page,
+  .test-page {
+    margin: 12px auto;
+    width: calc(100% - 12px);
+    gap: 12px;
+  }
+
+  .auth-intro-page {
+    margin: 12px auto;
+    width: calc(100% - 12px);
+    min-height: calc(100vh - 24px);
+  }
+
+  .auth-intro-card {
+    padding: 20px 16px 18px;
+    border-radius: 20px;
+  }
+
+  .auth-card,
+  .dashboard-header,
+  .test-topbar,
+  .overall-progress-card,
+  .phase-card,
+  .checklist-section,
+  .test-section,
+  .question-card,
+  .ai-summary-card,
+  .analytics-card,
+  .saved-study-card,
+  .dsa-practice-panel {
+    padding: 16px;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .auth-card {
+    width: min(100%, 100%);
+    padding: 18px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  h2 {
+    font-size: 1.15rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+
+  h4 {
+    font-size: 0.95rem;
+  }
+
+  .page-brand-block {
+    gap: 6px;
+  }
+
+  .project-tag {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+  }
+
+  .project-logo-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .project-logo-compact .project-logo-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .project-logo-copy strong {
+    font-size: 0.95rem;
+  }
+
+  .project-logo-copy span {
+    font-size: 0.7rem;
+  }
+
+  /* Form optimizations */
+  .auth-form {
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .auth-form label {
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  input,
+  button {
+    padding: 0.75rem 0.9rem;
+    font-size: 1rem;
+    border-radius: 11px;
+    min-height: 48px;
+  }
+
+  input {
+    border-radius: 10px;
+  }
+
+  input:focus {
+    outline: 2px solid rgba(91, 141, 239, 0.4);
+    outline-offset: 1px;
+  }
+
+  button {
+    font-weight: 700;
+    padding: 0.7rem 0.95rem;
+    font-size: 0.95rem;
+  }
+
+  /* Flex direction changes for mobile */
   .checklist-head {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 
   .checklist-search {
@@ -1111,16 +1426,24 @@ button:disabled {
   .test-topbar,
   .test-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 12px;
   }
 
-  .test-header-actions,
-  .question-actions {
+  .dashboard-header > div:last-child {
+    display: flex;
+    gap: 10px;
+  }
+
+  .dashboard-header button {
     width: 100%;
   }
 
-  .custom-checklist-add {
-    grid-template-columns: 1fr;
+  .test-header-actions,
+  .question-actions,
+  .phase-actions {
+    width: 100%;
+    flex-direction: column;
   }
 
   .test-header-actions button,
@@ -1128,11 +1451,320 @@ button:disabled {
   .phase-actions button,
   .modal-actions button {
     width: 100%;
+    font-size: 0.95rem;
+  }
+
+  .custom-checklist-add {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .question-card-head {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 
+  .bookmark-button {
+    width: 100%;
+  }
+
+  /* Typography for mobile */
+  .hint-text,
+  .status-text,
+  .progress-text,
+  .result-text,
+  .question-title {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .interview-badge {
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+  }
+
+  /* Cards and sections */
+  .phase-grid {
+    gap: 12px;
+  }
+
+  .phase-tabs {
+    padding: 10px;
+    gap: 8px;
+    top: 12px;
+    border-radius: 14px;
+  }
+
+  .phase-tab {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.85rem;
+    min-height: 42px;
+  }
+
+  .overall-percent,
+  .ai-score {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  .ai-summary-card {
+    gap: 10px;
+  }
+
+  .ai-summary-head {
+    gap: 10px;
+  }
+
+  .ai-topic-pill {
+    padding: 11px 12px;
+    gap: 3px;
+  }
+
+  .ai-topic-pill strong {
+    font-size: 0.9rem;
+  }
+
+  .ai-topic-pill span {
+    font-size: 0.85rem;
+  }
+
+  /* Checklist optimizations */
+  .checklist-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .check-item,
+  .option-list label {
+    padding: 11px 12px;
+    border-radius: 11px;
+    font-size: 0.9rem;
+    gap: 8px;
+    min-height: 44px;
+  }
+
+  .check-item-main {
+    gap: 8px;
+  }
+
+  /* Analytics */
+  .analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .analytics-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .analytics-head {
+    gap: 8px;
+  }
+
+  .chart-shell {
+    min-height: 200px;
+  }
+
+  /* DSA Practice */
+  .dsa-practice-panel {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .dsa-quote {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .dsa-links-grid {
+    gap: 8px;
+  }
+
+  .dsa-link-chip {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  /* Test related */
+  .test-footer-actions {
+    margin-top: 6px;
+  }
+
+  .note-field {
+    gap: 5px;
+  }
+
+  .note-field label {
+    font-size: 0.9rem;
+  }
+
+  .note-field textarea {
+    min-height: 80px;
+    padding: 0.8rem 0.9rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
+  }
+
+  /* Modals and Toasts */
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .app-modal {
+    border-radius: 16px;
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .result-modal {
+    width: min(100%, 100%);
+  }
+
+  .modal-head {
+    gap: 8px;
+  }
+
+  .modal-head h2 {
+    font-size: 1.1rem;
+  }
+
+  .modal-actions {
+    gap: 8px;
+  }
+
+  .modal-actions button {
+    font-size: 0.9rem;
+    min-height: 44px;
+  }
+
+  .toast-stack {
+    width: min(90vw, 300px);
+    top: 12px;
+    right: 12px;
+    left: auto;
+    gap: 8px;
+  }
+
+  .toast-item {
+    padding: 12px 13px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    gap: 6px;
+  }
+
+  .toast-item p {
+    font-size: 0.9rem;
+  }
+
+  /* Saved study items */
+  .saved-study-list {
+    gap: 10px;
+  }
+
+  .saved-study-item {
+    padding: 12px 14px;
+    gap: 8px;
+    border-radius: 12px;
+  }
+
+  .saved-study-top {
+    gap: 8px;
+  }
+
+  .bookmark-tag {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.55rem;
+  }
+
+  .timer-pill {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  /* Improvement box */
+  .improvement-box {
+    padding: 12px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+
+  .improvement-list {
+    padding-left: 16px;
+    font-size: 0.9rem;
+    gap: 4px;
+  }
+
+  .answer-summary {
+    font-size: 0.88rem;
+  }
+
+  /* Ghost and action buttons */
+  .show-more-button,
+  .ghost-button,
+  .mini-danger {
+    font-size: 0.85rem;
+    padding: 0.6rem 0.8rem;
+    min-height: 40px;
+  }
+
+  .checklist-group-head {
+    gap: 8px;
+  }
+
+  .checklist-group-head h4 {
+    font-size: 0.95rem;
+  }
+
+  .phase-progress-bar {
+    height: 8px;
+  }
+
+  .dsa-links-grid {
+    flex-wrap: wrap;
+  }
+
+  .dsa-link-chip {
+    border-radius: 8px;
+  }
+
+  /* Three splash adjustments */
+  .three-splash {
+    min-height: 160px;
+    margin-bottom: 12px;
+  }
+
+  .three-splash-stage {
+    padding: 8px 10px 12px;
+  }
+
+  .three-splash-text,
+  .three-splash-shadow,
+  .three-splash-reflection {
+    font-size: clamp(1.4rem, 3vw, 2.2rem);
+  }
+
+  .three-splash-subtitle {
+    font-size: 0.85rem;
+    max-width: 32ch;
+    margin-top: 6px;
+  }
+
+  .three-splash-orbit-left {
+    width: 120px;
+    height: 120px;
+    left: -5%;
+  }
+
+  .three-splash-orbit-right {
+    width: 150px;
+    height: 150px;
+    right: -8%;
+  }
+
+  .three-splash-stage::before {
+    inset: 12px 8% 6px;
+    border-radius: 24px;
+  }
 }
